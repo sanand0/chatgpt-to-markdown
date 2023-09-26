@@ -97,7 +97,7 @@ git push --follow-tags
 
 ## Release notes
 
-- 1.0.1: 26 Sep 2023.
+- 1.1.0: 26 Sep 2023.
 - 1.0.0: 26 Sep 2023. Initial release
 
 ## License
