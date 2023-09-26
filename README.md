@@ -65,13 +65,15 @@ const json = [
 ];
 
 const sourceDir = "./output";
-
+const options = {
+  dateFormat: (d) => d.toLocaleString(),
+};
 chatgptToMarkdown(json, sourceDir);
 ```
 
 ## Options
 
-Currently, there are no additional options. Feel free to open an issue or submit a PR if there's a feature you'd like to see added!
+- `dateFormat`: A function that takes a `Date` object and returns a string. Defaults to a string format like "1 Jan 2023 11:30 PM".
 
 ## Contributing
 
@@ -95,6 +97,7 @@ git push --follow-tags
 
 ## Release notes
 
+- 1.0.1: 26 Sep 2023.
 - 1.0.0: 26 Sep 2023. Initial release
 
 ## License

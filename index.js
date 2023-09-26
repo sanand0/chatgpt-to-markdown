@@ -38,11 +38,36 @@ function indent(str) {
 }
 
 /**
+ * Formats a date to a string like "1 Jan 2021".
+ * @param {Date} date - The date to format.
+ * @returns {string} - The formatted date.
+ * @example
+ * formatDate(new Date());
+ * //=> "1 Jan 2021"
+ */
+function formatDate(date) {
+  const month = date.toLocaleString("en", { month: "short" });
+  const min = date.getMinutes().toString().padStart(2, "0");
+  let hours = date.getHours();
+  let ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  return `${date.getDate()} ${month} ${date.getFullYear()} ${hours}:${min} ${ampm}`;
+}
+
+/**
  * Converts a JSON object to markdown and saves it to a file.
  * @param {Object[]} json - The JSON object to convert.
  * @param {string} sourceDir - The directory to save the markdown files in.
+ * @param {Object} [options] - The options object.
+ * @param {Function} [options.dateFormat] - The function to format dates with.
+ * @returns {Promise<void>} - A promise that resolves when the file is saved.
+ * @example
+ * const json = [ ... ];
+ * await convertToMarkdown(json, "./output");
+ * //=> Creates a markdown file for each conversation in the output directory
  */
-async function chatgptToMarkdown(json, sourceDir) {
+async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat: formatDate }) {
   if (!Array.isArray(json)) {
     throw new TypeError("The first argument must be an array.");
   }
@@ -56,8 +81,8 @@ async function chatgptToMarkdown(json, sourceDir) {
     const filePath = path.join(sourceDir, fileName);
     const title = `# ${wrapHtmlTagsInBackticks(conversation.title)}\n`;
     const metadata = [
-      `- Created: ${new Date(conversation.create_time * 1000).toLocaleString()}\n`,
-      `- Updated: ${new Date(conversation.update_time * 1000).toLocaleString()}\n`,
+      `- Created: ${dateFormat(new Date(conversation.create_time * 1000))}\n`,
+      `- Updated: ${dateFormat(new Date(conversation.update_time * 1000))}\n`,
     ].join("");
     const messages = Object.values(conversation.mapping)
       .map((node) => {
