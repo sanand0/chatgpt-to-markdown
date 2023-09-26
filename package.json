@@ -1,0 +1,27 @@
+{
+  "name": "chatgpt-to-markdown",
+  "version": "1.0.0",
+  "description": "Convert ChatGPT exported conversations.json to Markdown",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "chatgpt-to-markdown": "cli.js"
+  },
+  "scripts": {
+    "prepublishOnly": "npx prettier --write *.js *.md package.json",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "chatgpt",
+    "markdown",
+    "converter"
+  ],
+  "author": "S Anand <root.node@gmail.com>",
+  "license": "MIT",
+  "prettier": {
+    "printWidth": 120
+  },
+  "devDependencies": {
+    "prettier": "^3.0.3"
+  }
+}
