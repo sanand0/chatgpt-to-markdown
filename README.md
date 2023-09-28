@@ -97,7 +97,8 @@ git push --follow-tags
 
 ## Release notes
 
-- 1.1.0: 26 Sep 2023.
+- 1.2.0: 28 Sep 2023. Added test cases
+- 1.1.0: 26 Sep 2023. Add date format option
 - 1.0.0: 26 Sep 2023. Initial release
 
 ## License
