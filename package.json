@@ -8,8 +8,8 @@
     "chatgpt-to-markdown": "cli.js"
   },
   "scripts": {
-    "prepublishOnly": "npx prettier --write *.js *.md package.json",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepublishOnly": "npx prettier --write *.js *.md package.json && npm test",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "keywords": [
     "chatgpt",
@@ -22,6 +22,7 @@
     "printWidth": 120
   },
   "devDependencies": {
+    "jest": "^29.7.0",
     "prettier": "^3.0.3"
   }
 }
