@@ -108,6 +108,7 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
       .join("");
     const markdownContent = `${title}\n${metadata}\n${messages}`;
     await fs.writeFile(filePath, markdownContent, "utf8");
+    await fs.utimes(filePath, conversation.update_time, conversation.create_time);
   }
 }
 

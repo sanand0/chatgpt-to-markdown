@@ -97,6 +97,7 @@ git push --follow-tags
 
 ## Release notes
 
+- 1.3.0: 29 Sep 2023. Set create and update dates from chat
 - 1.2.0: 28 Sep 2023. Added test cases
 - 1.1.0: 26 Sep 2023. Add date format option
 - 1.0.0: 26 Sep 2023. Initial release
