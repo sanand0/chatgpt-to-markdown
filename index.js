@@ -37,23 +37,15 @@ function indent(str) {
     .join("\n");
 }
 
-/**
- * Formats a date to a string like "1 Jan 2021".
- * @param {Date} date - The date to format.
- * @returns {string} - The formatted date.
- * @example
- * formatDate(new Date());
- * //=> "1 Jan 2021"
- */
-function formatDate(date) {
-  const month = date.toLocaleString("en", { month: "short" });
-  const min = date.getMinutes().toString().padStart(2, "0");
-  let hours = date.getHours();
-  let ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  hours = hours ? hours : 12; // the hour '0' should be '12'
-  return `${date.getDate()} ${month} ${date.getFullYear()} ${hours}:${min} ${ampm}`;
-}
+const dateFormat = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+export const formatDate = (date) => dateFormat.format(date);
 
 /**
  * Converts a JSON object to markdown and saves it to a file.
@@ -96,6 +88,14 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
             ? "```" + content.language.replace("unknown", "") + "\n" + content.text + "\n```"
             : content.content_type == "execution_output"
             ? "```\n" + content.text + "\n```"
+            : content.content_type == "multimodal_text"
+            ? content.parts
+                .map((part) =>
+                  part.content_type === "image_asset_pointer"
+                    ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt}\n\n`
+                    : `${part.content_type}\n\n`,
+                )
+                .join("")
             : content;
         // Ignore empty content
         if (!body.trim()) return "";

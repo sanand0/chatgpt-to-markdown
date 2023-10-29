@@ -3,7 +3,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
-import chatgptToMarkdown from "./index";
+import { default as chatgptToMarkdown, formatDate } from "./index";
 
 describe("chatgptToMarkdown", () => {
   let tempDir;
@@ -40,8 +40,8 @@ describe("chatgptToMarkdown", () => {
 
     expect(fileContent).toBe(`# Test Conversation
 
-- Created: 1 Sep 2021 5:30 AM
-- Updated: 1 Sep 2021 6:30 AM
+- Created: ${formatDate(1630454400 * 1000)}
+- Updated: ${formatDate(1630458000 * 1000)}
 
 ## user (John)
 
@@ -127,6 +127,40 @@ describe("chatgptToMarkdown", () => {
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
     expect(fileContent).not.toContain("## user (John)");
+  });
+
+  it("should handle multimodal_text content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "tool", name: "dalle.text2im" },
+              content: {
+                content_type: "multimodal_text",
+                parts: [
+                  {
+                    content_type: "image_asset_pointer",
+                    width: 1024,
+                    height: 1024,
+                    metadata: { dalle: { prompt: "Photo" } },
+                  },
+                  { content_type: "image_asset_pointer", width: 1024, height: 1024 },
+                  { content_type: "some_other_type" },
+                ],
+              },
+            },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("Image (1024x1024): Photo\n");
+    expect(fileContent).toContain("some_other_type\n");
   });
 
   it("should indent messages with tool role that contain ``` fenced code blocks", async () => {
