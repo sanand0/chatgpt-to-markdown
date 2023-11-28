@@ -33,8 +33,8 @@ function wrapHtmlTagsInBackticks(text) {
 function indent(str) {
   return str
     .split("\n")
-    .map((v) => `    ${v}`)
-    .join("\n");
+    .map((v) => `    ${v}\n`)
+    .join("");
 }
 
 const dateFormat = new Intl.DateTimeFormat("en-US", {
@@ -96,6 +96,12 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
                     : `${part.content_type}\n\n`,
                 )
                 .join("")
+            : content.content_type == "tether_browsing_display"
+            ? "```\n" + content.result + "\n```"
+            : content.content_type == "tether_quote"
+            ? "```\n" + `${content.title} (${content.url})\n\n${content.text}` + "\n```"
+            : content.content_type == "system_error"
+            ? `${content.name}\n\n${content.text}\n\n`
             : content;
         // Ignore empty content
         if (!body.trim()) return "";

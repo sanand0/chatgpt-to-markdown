@@ -47,6 +47,7 @@ describe("chatgptToMarkdown", () => {
 
     Hello
 
+
 `);
   });
 
@@ -127,6 +128,48 @@ describe("chatgptToMarkdown", () => {
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
     expect(fileContent).not.toContain("## user (John)");
+  });
+
+  it("should handle tether_browsing_display content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "tool", name: "browser" },
+              content: { content_type: "tether_browsing_display", result: "L0: x" },
+            },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("```\nL0: x\n```");
+  });
+
+  it("should handle tether_quote content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "tool", name: "browser" },
+              content: { content_type: "tether_quote", url: "x.com", domain: "x.com", title: "T", text: "X" },
+            },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("```\nT (x.com)\n\nX\n```");
   });
 
   it("should handle multimodal_text content", async () => {
