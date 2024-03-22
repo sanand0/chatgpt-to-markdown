@@ -9,6 +9,7 @@ import path from "path";
 function sanitizeFileName(title) {
   return title
     .replace(/[<>:"\/\\|?*\n]/g, " ")
+    .replace(/[^\w\s]/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -85,24 +86,24 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
           content.content_type == "text"
             ? content.parts.join("\n")
             : content.content_type == "code"
-            ? "```" + content.language.replace("unknown", "") + "\n" + content.text + "\n```"
-            : content.content_type == "execution_output"
-            ? "```\n" + content.text + "\n```"
-            : content.content_type == "multimodal_text"
-            ? content.parts
-                .map((part) =>
-                  part.content_type === "image_asset_pointer"
-                    ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt}\n\n`
-                    : `${part.content_type}\n\n`,
-                )
-                .join("")
-            : content.content_type == "tether_browsing_display"
-            ? "```\n" + content.result + "\n```"
-            : content.content_type == "tether_quote"
-            ? "```\n" + `${content.title} (${content.url})\n\n${content.text}` + "\n```"
-            : content.content_type == "system_error"
-            ? `${content.name}\n\n${content.text}\n\n`
-            : content;
+              ? "```" + content.language.replace("unknown", "") + "\n" + content.text + "\n```"
+              : content.content_type == "execution_output"
+                ? "```\n" + content.text + "\n```"
+                : content.content_type == "multimodal_text"
+                  ? content.parts
+                      .map((part) =>
+                        part.content_type === "image_asset_pointer"
+                          ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt}\n\n`
+                          : `${part.content_type}\n\n`,
+                      )
+                      .join("")
+                  : content.content_type == "tether_browsing_display"
+                    ? "```\n" + content.result + "\n```"
+                    : content.content_type == "tether_quote"
+                      ? "```\n" + `${content.title} (${content.url})\n\n${content.text}` + "\n```"
+                      : content.content_type == "system_error"
+                        ? `${content.name}\n\n${content.text}\n\n`
+                        : content;
         // Ignore empty content
         if (!body.trim()) return "";
         // Indent user / tool messages. The sometimes contain code and whitespaces are relevant
