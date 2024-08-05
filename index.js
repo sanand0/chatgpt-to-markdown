@@ -82,28 +82,39 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
         let content = node.message?.content;
         if (!content) return "";
         // Format the body based on the content type
-        let body =
-          content.content_type == "text"
-            ? content.parts.join("\n")
-            : content.content_type == "code"
-              ? "```" + content.language.replace("unknown", "") + "\n" + content.text + "\n```"
-              : content.content_type == "execution_output"
-                ? "```\n" + content.text + "\n```"
-                : content.content_type == "multimodal_text"
-                  ? content.parts
-                      .map((part) =>
-                        part.content_type === "image_asset_pointer"
-                          ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt}\n\n`
-                          : `${part.content_type}\n\n`,
-                      )
-                      .join("")
-                  : content.content_type == "tether_browsing_display"
-                    ? "```\n" + content.result + "\n```"
-                    : content.content_type == "tether_quote"
-                      ? "```\n" + `${content.title} (${content.url})\n\n${content.text}` + "\n```"
-                      : content.content_type == "system_error"
-                        ? `${content.name}\n\n${content.text}\n\n`
-                        : content;
+        let body;
+        switch (content.content_type) {
+          case "text":
+            body = content.parts.join("\n");
+            break;
+          case "code":
+            body = "```" + content.language.replace("unknown", "") + "\n" + content.text + "\n```";
+            break;
+          case "execution_output":
+            body = "```\n" + content.text + "\n```";
+            break;
+          case "multimodal_text":
+            body = content.parts
+              .map((part) =>
+                part.content_type === "image_asset_pointer"
+                  ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt ?? ""}\n\n`
+                  : `${part.content_type}\n\n`,
+              )
+              .join("");
+            break;
+          case "tether_browsing_display":
+            body = "```\n" + (content.summary ? `${content.summary}\n` : "") + content.result + "\n```";
+            break;
+          case "tether_quote":
+            body = "```\n" + `${content.title} (${content.url})\n\n${content.text}` + "\n```";
+            break;
+          case "system_error":
+            body = `${content.name}\n\n${content.text}\n\n`;
+            break;
+          default:
+            body = content;
+            break;
+        }
         // Ignore empty content
         if (!body.trim()) return "";
         // Indent user / tool messages. The sometimes contain code and whitespaces are relevant
