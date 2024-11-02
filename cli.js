@@ -10,15 +10,10 @@ async function run() {
     process.exit(1);
   }
 
-  try {
-    const data = await fs.readFile(filePath, "utf8");
-    const json = JSON.parse(data);
-    const sourceDir = path.dirname(filePath);
-    await chatgptToMarkdown(json, sourceDir);
-  } catch (err) {
-    console.error("Error:", err.message);
-    process.exit(1);
-  }
+  const data = await fs.readFile(filePath, "utf8");
+  const json = JSON.parse(data);
+  const sourceDir = path.dirname(filePath);
+  await chatgptToMarkdown(json, sourceDir);
 }
 
 run();
