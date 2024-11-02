@@ -69,13 +69,14 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
   }
 
   for (const conversation of json) {
-    const sanitizedTitle = sanitizeFileName(conversation.title);
+    const sanitizedTitle = sanitizeFileName(conversation.title) || conversation.conversation_id;
     const fileName = `${sanitizedTitle}.md`;
     const filePath = path.join(sourceDir, fileName);
     const title = `# ${wrapHtmlTagsInBackticks(conversation.title)}\n`;
     const metadata = [
       `- Created: ${dateFormat(new Date(conversation.create_time * 1000))}\n`,
       `- Updated: ${dateFormat(new Date(conversation.update_time * 1000))}\n`,
+      `- Link: https://chatgpt.com/c/${conversation.conversation_id}\n`,
     ].join("");
     const messages = Object.values(conversation.mapping)
       .map((node) => {

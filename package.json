@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-to-markdown",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "Convert ChatGPT exported conversations.json to Markdown",
   "main": "index.js",
   "type": "module",

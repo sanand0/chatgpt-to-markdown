@@ -22,6 +22,7 @@ describe("chatgptToMarkdown", () => {
         title: "Test Conversation",
         create_time: 1630454400,
         update_time: 1630458000,
+        conversation_id: "abc123",
         mapping: {
           0: {
             message: {
@@ -42,6 +43,7 @@ describe("chatgptToMarkdown", () => {
 
 - Created: ${formatDate(1630454400 * 1000)}
 - Updated: ${formatDate(1630458000 * 1000)}
+- Link: https://chatgpt.com/c/abc123
 
 ## user (John)
 
@@ -359,5 +361,20 @@ describe("chatgptToMarkdown", () => {
   it("should throw TypeError for invalid arguments", async () => {
     await expect(chatgptToMarkdown("not an array", tempDir)).rejects.toThrow(TypeError);
     await expect(chatgptToMarkdown([], 123)).rejects.toThrow(TypeError);
+  });
+
+  it("should use conversation_id as filename when sanitized title is empty", async () => {
+    const json = [
+      {
+        title: "?????", // Will be sanitized to empty string
+        conversation_id: "abc123",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {},
+      },
+    ];
+
+    await chatgptToMarkdown(json, tempDir);
+    await expect(fs.access(path.join(tempDir, "abc123.md"))).resolves.not.toThrow();
   });
 });
