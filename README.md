@@ -97,6 +97,7 @@ git push --follow-tags
 
 ## Release notes
 
+- 1.5.4: 02 Nov 2024. Skip `user_editable_context` to avoid polluting Markdown with custom instructions
 - 1.5.3: 05 Aug 2024. Show text from multimodal prompts
 - 1.5.2: 05 Aug 2024. Show tether_browsing_display summary
 - 1.5.1: 22 Mar 2024. Handle unicode filenames

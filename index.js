@@ -34,7 +34,7 @@ function wrapHtmlTagsInBackticks(text) {
 function indent(str) {
   return str
     .split("\n")
-    .map((v) => `    ${v}\n`)
+    .map((v) => (v.trim() ? `    ${v}\n` : ""))
     .join("");
 }
 
@@ -112,6 +112,11 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
             break;
           case "system_error":
             body = `${content.name}\n\n${content.text}\n\n`;
+            break;
+          case "user_editable_context":
+            // We don't want to pollute all Markdown with custom instuctions
+            // in content.user_instructions. So skip it
+            body = "";
             break;
           default:
             body = content;

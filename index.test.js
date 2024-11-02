@@ -226,4 +226,138 @@ describe("chatgptToMarkdown", () => {
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
     expect(fileContent).toContain('```javascript\nconsole.log("Hello, world!");\n```\n');
   });
+
+  it("should skip user_editable_context content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "user" },
+              content: {
+                content_type: "user_editable_context",
+                user_profile: "test profile",
+                user_instructions: "test instructions",
+              },
+            },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).not.toContain("test profile");
+    expect(fileContent).not.toContain("test instructions");
+  });
+
+  it("should handle system_error content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "system" },
+              content: {
+                content_type: "system_error",
+                name: "Error Name",
+                text: "Error details",
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("Error Name\n\nError details\n\n");
+  });
+
+  it("should handle execution_output content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "assistant" },
+              content: {
+                content_type: "execution_output",
+                text: "Program output",
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("```\nProgram output\n```");
+  });
+
+  it("should handle code content with unknown language", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "assistant" },
+              content: {
+                content_type: "code",
+                language: "unknown",
+                text: "some code",
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("```\nsome code\n```");
+  });
+
+  it("should handle tether_browsing_display with summary", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "tool" },
+              content: {
+                content_type: "tether_browsing_display",
+                summary: "Page Summary",
+                result: "Search Result",
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("```\nPage Summary\nSearch Result\n```");
+  });
+
+  it("should throw TypeError for invalid arguments", async () => {
+    await expect(chatgptToMarkdown("not an array", tempDir)).rejects.toThrow(TypeError);
+    await expect(chatgptToMarkdown([], 123)).rejects.toThrow(TypeError);
+  });
 });
