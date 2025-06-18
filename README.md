@@ -97,6 +97,7 @@ git push --follow-tags
 
 ## Release notes
 
+- 1.6.0: 18 Jul 2025. Handle `thoughts`, `reasoning_recap`, `sonic_webpage`. Include projects
 - 1.5.5: 02 Nov 2024. Add conversation link. Use conversation ID as fallback title if title is empty.
 - 1.5.4: 02 Nov 2024. Skip `user_editable_context` to avoid polluting Markdown with custom instructions
 - 1.5.3: 05 Aug 2024. Show text from multimodal prompts
