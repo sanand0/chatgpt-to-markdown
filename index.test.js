@@ -171,7 +171,7 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain("```\nT (x.com)\n\nX\n```");
+    expect(fileContent).toContain("    > T (x.com)\n    >\n    > X");
   });
 
   it("should handle multimodal_text content", async () => {
@@ -376,5 +376,67 @@ describe("chatgptToMarkdown", () => {
 
     await chatgptToMarkdown(json, tempDir);
     await expect(fs.access(path.join(tempDir, "abc123.md"))).resolves.not.toThrow();
+  });
+
+  it("should handle thoughts content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "assistant" },
+              content: { content_type: "thoughts", thoughts: [{ summary: "Sum", content: "Detail" }] },
+            },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("##### Sum");
+    expect(fileContent).toContain("Detail");
+  });
+
+  it("should handle reasoning_recap content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: { author: { role: "assistant" }, content: { content_type: "reasoning_recap", content: "recap" } },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("> recap");
+  });
+
+  it("should handle sonic_webpage content", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        mapping: {
+          0: {
+            message: {
+              author: { role: "tool", name: "web.search" },
+              content: { content_type: "sonic_webpage", url: "https://a.com", title: "Title", text: "Body" },
+            },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("Title (https://a.com)");
+    expect(fileContent).toContain("Body");
   });
 });
