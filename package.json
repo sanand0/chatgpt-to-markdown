@@ -8,8 +8,8 @@
     "chatgpt-to-markdown": "cli.js"
   },
   "scripts": {
-    "prepublishOnly": "npx prettier --write *.js *.md package.json && npm test",
-    "test": "vitest run --globals"
+    "prepublishOnly": "npx -y prettier@3.5 --write *.js *.md package.json && npm test",
+    "test": "npx -y vitest@3 run --globals"
   },
   "keywords": [
     "chatgpt",
@@ -20,9 +20,5 @@
   "license": "MIT",
   "prettier": {
     "printWidth": 120
-  },
-  "devDependencies": {
-    "prettier": "^3.2.5",
-    "vitest": "^3.2.4"
   }
 }
