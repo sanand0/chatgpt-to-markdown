@@ -38,6 +38,62 @@ function indent(str) {
     .join("");
 }
 
+/**
+ * Returns markdown for a conversation node.
+ * @param {Object} node - Conversation node
+ */
+function formatNode(node) {
+  const content = node.message?.content;
+  if (!content) return "";
+
+  let body;
+  switch (content.content_type) {
+    case "text":
+      body = content.parts.join("\n");
+      break;
+    case "code":
+      body = "```" + content.language.replace("unknown", "") + "\n" + content.text + "\n```";
+      break;
+    case "execution_output":
+      body = "```\n" + content.text + "\n```";
+      break;
+    case "multimodal_text":
+      body = content.parts
+        .map((part) =>
+          typeof part == "string"
+            ? `${part}\n\n`
+            : part.content_type === "image_asset_pointer"
+              ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt ?? ""}\n\n`
+              : `${part.content_type}\n\n`,
+        )
+        .join("");
+      break;
+    case "tether_browsing_display":
+      body = "```\n" + (content.summary ? `${content.summary}\n` : "") + content.result + "\n```";
+      break;
+    case "tether_quote":
+      body = "```\n" + `${content.title} (${content.url})\n\n${content.text}` + "\n```";
+      break;
+    case "system_error":
+      body = `${content.name}\n\n${content.text}\n\n`;
+      break;
+    case "user_editable_context":
+      body = "";
+      break;
+    default:
+      body = content;
+      break;
+  }
+
+  if (!body.trim()) return "";
+
+  const author = node.message.author;
+  if (author.role == "user") body = indent(body);
+  if (author.role == "tool" && !body.startsWith("```") && !body.endsWith("```")) body = indent(body);
+
+  return `## ${author.role}${author.name ? ` (${author.name})` : ""}\n\n${body}\n\n`;
+}
+
 const dateFormat = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
@@ -80,56 +136,12 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
     ].join("");
     const messages = Object.values(conversation.mapping)
       .map((node) => {
-        let content = node.message?.content;
-        if (!content) return "";
-        // Format the body based on the content type
-        let body;
-        switch (content.content_type) {
-          case "text":
-            body = content.parts.join("\n");
-            break;
-          case "code":
-            body = "```" + content.language.replace("unknown", "") + "\n" + content.text + "\n```";
-            break;
-          case "execution_output":
-            body = "```\n" + content.text + "\n```";
-            break;
-          case "multimodal_text":
-            body = content.parts
-              .map((part) =>
-                typeof part == "string"
-                  ? `${part}\n\n`
-                  : part.content_type === "image_asset_pointer"
-                    ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt ?? ""}\n\n`
-                    : `${part.content_type}\n\n`,
-              )
-              .join("");
-            break;
-          case "tether_browsing_display":
-            body = "```\n" + (content.summary ? `${content.summary}\n` : "") + content.result + "\n```";
-            break;
-          case "tether_quote":
-            body = "```\n" + `${content.title} (${content.url})\n\n${content.text}` + "\n```";
-            break;
-          case "system_error":
-            body = `${content.name}\n\n${content.text}\n\n`;
-            break;
-          case "user_editable_context":
-            // We don't want to pollute all Markdown with custom instuctions
-            // in content.user_instructions. So skip it
-            body = "";
-            break;
-          default:
-            body = content;
-            break;
+        try {
+          return formatNode(node);
+        } catch (err) {
+          err.message += `\n${JSON.stringify(node)}`;
+          throw err;
         }
-        // Ignore empty content
-        if (!body.trim()) return "";
-        // Indent user / tool messages. The sometimes contain code and whitespaces are relevant
-        const author = node.message.author;
-        if (author.role == "user") body = indent(body);
-        if (author.role == "tool" && !body.startsWith("```") && !body.endsWith("```")) body = indent(body);
-        return `## ${author.role}${author.name ? ` (${author.name})` : ""}\n\n${body}\n\n`;
       })
       .join("");
     const markdownContent = `${title}\n${metadata}\n${messages}`;
