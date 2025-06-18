@@ -439,4 +439,20 @@ describe("chatgptToMarkdown", () => {
     expect(fileContent).toContain("Title (https://a.com)");
     expect(fileContent).toContain("Body");
   });
+
+  it("should include gizmo project link", async () => {
+    const json = [
+      {
+        title: "Test Conversation",
+        conversation_id: "abc",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        gizmo_id: "g123",
+        mapping: {},
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
+    expect(fileContent).toContain("- Project: https://chatgpt.com/g/g123/project");
+  });
 });
