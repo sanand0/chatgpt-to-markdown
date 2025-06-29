@@ -18,6 +18,26 @@ npx chatgpt-to-markdown path/to/your/conversations.json
 
 This will generate one Markdown file for each chat same directory as the conversations JSON file. The file name will be the chat title, with invalid filename characters replaced by spaces.
 
+## Thinking Time Analysis
+
+Analyze thinking time statistics from your ChatGPT conversations:
+
+```bash
+npx -p chatgpt-to-markdown thinktime path/to/your/conversations.json
+```
+
+This will analyze all conversations and show statistics about thinking/reasoning time, including:
+
+- Total conversations with thinking
+- Total thinking time and blocks
+- Distribution of thinking times
+- Top conversations by thinking time
+- Top individual thinking blocks
+
+Optional flag:
+
+- `--save-details`: Save detailed results to `thinking_analysis_results_node.json`
+
 ## Example
 
 Here's an example of the Markdown output for a chat with the title `Medium-Style Table CSS`:

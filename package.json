@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "bin": {
-    "chatgpt-to-markdown": "cli.js"
+    "chatgpt-to-markdown": "cli.js",
+    "thinktime": "thinktime.js"
   },
   "scripts": {
     "prepublishOnly": "npx -y prettier@3.5 --write *.js *.md package.json && npm test",
