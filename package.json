@@ -1,9 +1,15 @@
 {
   "name": "chatgpt-to-markdown",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Convert ChatGPT exported conversations.json to Markdown",
   "main": "index.js",
   "type": "module",
+  "files": [
+    "cli.js",
+    "index.js",
+    "thinktime.js",
+    "README.md"
+  ],
   "bin": {
     "chatgpt-to-markdown": "cli.js",
     "thinktime": "thinktime.js"
