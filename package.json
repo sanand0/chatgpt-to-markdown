@@ -1,31 +1,43 @@
 {
   "name": "chatgpt-to-markdown",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "Convert ChatGPT exported conversations.json to Markdown",
-  "main": "index.js",
+  "homepage": "https://github.com/sanand0/chatgpt-to-markdown",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sanand0/chatgpt-to-markdown.git"
+  },
+  "license": "MIT",
+  "author": "Anand S <root.node@gmail.com>",
   "type": "module",
+  "module": "chatgpt-to-markdown.js",
+  "prettier": {
+    "printWidth": 120
+  },
   "files": [
-    "cli.js",
-    "index.js",
+    "LICENSE",
+    "README.md",
+    "chatgpt-to-markdown.js",
     "thinktime.js",
-    "README.md"
+    "chatgpt-to-markdown-cli.js",
+    "thinktime-cli.js"
   ],
+  "exports": "./chatgpt-to-markdown.js",
   "bin": {
-    "chatgpt-to-markdown": "cli.js",
-    "thinktime": "thinktime.js"
+    "chatgpt-to-markdown": "chatgpt-to-markdown-cli.js",
+    "thinktime": "thinktime-cli.js"
   },
   "scripts": {
-    "prepublishOnly": "npx -y prettier@3.5 --write *.js *.md package.json && npm test",
-    "test": "npx -y vitest@3 run --globals"
+    "lint:oxlint": "npx -y oxlint --fix",
+    "lint:js-md": "npx -y prettier@3.5 --print-width 120 --write '**/*.js' '!**/*.min.js' '!dist/**' '**/*.md'",
+    "lint:html": "npx -y js-beautify@1 '**/*.html' --type html --replace --indent-size 2 --max-preserve-newlines 1 --end-with-newline",
+    "lint": "npm run lint:oxlint && npm run lint:js-md && npm run lint:html",
+    "test": "npx -y vitest@3 run --globals",
+    "prepublishOnly": "npm run lint && npm test"
   },
   "keywords": [
     "chatgpt",
     "markdown",
     "converter"
-  ],
-  "author": "S Anand <root.node@gmail.com>",
-  "license": "MIT",
-  "prettier": {
-    "printWidth": 120
-  }
+  ]
 }

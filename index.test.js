@@ -3,7 +3,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
-import { default as chatgptToMarkdown, formatDate } from "./index";
+import { default as chatgptToMarkdown, formatDate } from "./chatgpt-to-markdown";
 
 describe("chatgptToMarkdown", () => {
   let tempDir;

@@ -8,7 +8,7 @@ import path from "path";
  */
 function sanitizeFileName(title) {
   return title
-    .replace(/[<>:"\/\\|?*\n]/g, " ")
+    .replace(/[<>:"/\\|?*\n]/g, " ")
     .replace(/[^\w\s]/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
