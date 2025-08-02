@@ -455,4 +455,36 @@ describe("chatgptToMarkdown", () => {
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
     expect(fileContent).toContain("- Project: https://chatgpt.com/g/g123/project");
   });
+
+  it("should handle duplicate titles by adding a suffix", async () => {
+    const json = [
+      {
+        title: "Duplicate Title",
+        create_time: 1630454400,
+        update_time: 1630458000,
+        conversation_id: "abc123",
+        mapping: {},
+      },
+      {
+        title: "Duplicate Title",
+        create_time: 1630454401,
+        update_time: 1630458001,
+        conversation_id: "def456",
+        mapping: {},
+      },
+      {
+        title: "Duplicate Title",
+        create_time: 1630454402,
+        update_time: 1630458002,
+        conversation_id: "ghi789",
+        mapping: {},
+      },
+    ];
+
+    await chatgptToMarkdown(json, tempDir);
+
+    await expect(fs.access(path.join(tempDir, "Duplicate Title.md"))).resolves.not.toThrow();
+    await expect(fs.access(path.join(tempDir, "Duplicate Title (1).md"))).resolves.not.toThrow();
+    await expect(fs.access(path.join(tempDir, "Duplicate Title (2).md"))).resolves.not.toThrow();
+  });
 });

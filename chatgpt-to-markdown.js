@@ -136,9 +136,14 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
     throw new TypeError("The second argument must be a string.");
   }
 
+  const titleCounts = {};
   for (const conversation of json) {
     const sanitizedTitle = sanitizeFileName(conversation.title) || conversation.conversation_id;
-    const fileName = `${sanitizedTitle}.md`;
+    const count = titleCounts[sanitizedTitle] || 0;
+    titleCounts[sanitizedTitle] = count + 1;
+    const finalTitle = count > 0 ? `${sanitizedTitle} (${count})` : sanitizedTitle;
+
+    const fileName = `${finalTitle}.md`;
     const filePath = path.join(sourceDir, fileName);
     const title = `# ${wrapHtmlTagsInBackticks(conversation.title)}\n`;
     const lines = [
