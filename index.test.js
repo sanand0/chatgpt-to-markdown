@@ -380,14 +380,24 @@ describe("chatgptToMarkdown", () => {
 
   it("should append numeric suffix for duplicate titles", async () => {
     const json = [
-      { title: "Dup", conversation_id: "1", create_time: 1, update_time: 1, mapping: {} },
-      { title: "Dup", conversation_id: "2", create_time: 1, update_time: 1, mapping: {} },
-      { title: "Dup", conversation_id: "3", create_time: 1, update_time: 1, mapping: {} },
+      // Note the create_time values are not in order
+      { title: "Dup", conversation_id: "2", create_time: 1630454402, update_time: 1, mapping: {} },
+      { title: "Dup", conversation_id: "3", create_time: 1630454403, update_time: 1, mapping: {} },
+      { title: "Dup", conversation_id: "1", create_time: 1630454401, update_time: 1, mapping: {} },
     ];
     await chatgptToMarkdown(json, tempDir);
     await expect(fs.access(path.join(tempDir, "Dup.md"))).resolves.not.toThrow();
     await expect(fs.access(path.join(tempDir, "Dup (1).md"))).resolves.not.toThrow();
     await expect(fs.access(path.join(tempDir, "Dup (2).md"))).resolves.not.toThrow();
+
+    const firstFileContent = await fs.readFile(path.join(tempDir, "Dup.md"), "utf8");
+    expect(firstFileContent).toContain("https://chatgpt.com/c/1");
+
+    const secondFileContent = await fs.readFile(path.join(tempDir, "Dup (1).md"), "utf8");
+    expect(secondFileContent).toContain("https://chatgpt.com/c/2");
+
+    const thirdFileContent = await fs.readFile(path.join(tempDir, "Dup (2).md"), "utf8");
+    expect(thirdFileContent).toContain("https://chatgpt.com/c/3");
   });
 
   it("should ignore existing files when naming", async () => {

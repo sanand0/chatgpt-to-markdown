@@ -132,6 +132,8 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
   if (!Array.isArray(json)) throw new TypeError("The first argument must be an array.");
   if (typeof sourceDir !== "string") throw new TypeError("The second argument must be a string.");
 
+  json.sort((a, b) => a.create_time - b.create_time);
+
   const counts = {};
   for (const conversation of json) {
     const sanitizedTitle = sanitizeFileName(conversation.title) || conversation.conversation_id;

@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-to-markdown",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "Convert ChatGPT exported conversations.json to Markdown",
   "homepage": "https://github.com/sanand0/chatgpt-to-markdown",
   "repository": {
