@@ -129,16 +129,15 @@ export const formatDate = (date) => dateFormat.format(date);
  * //=> Creates a markdown file for each conversation in the output directory
  */
 async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat: formatDate }) {
-  if (!Array.isArray(json)) {
-    throw new TypeError("The first argument must be an array.");
-  }
-  if (typeof sourceDir !== "string") {
-    throw new TypeError("The second argument must be a string.");
-  }
+  if (!Array.isArray(json)) throw new TypeError("The first argument must be an array.");
+  if (typeof sourceDir !== "string") throw new TypeError("The second argument must be a string.");
 
+  const counts = {};
   for (const conversation of json) {
     const sanitizedTitle = sanitizeFileName(conversation.title) || conversation.conversation_id;
-    const fileName = `${sanitizedTitle}.md`;
+    const count = counts[sanitizedTitle] || 0;
+    counts[sanitizedTitle] = count + 1;
+    const fileName = `${sanitizedTitle}${count ? ` (${count})` : ""}.md`;
     const filePath = path.join(sourceDir, fileName);
     const title = `# ${wrapHtmlTagsInBackticks(conversation.title)}\n`;
     const lines = [
