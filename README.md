@@ -18,6 +18,7 @@ npx chatgpt-to-markdown path/to/your/conversations.json
 **NO NEED TO INSTALL** - `npx` will automatically install the package if it's not already installed.
 
 This will generate one Markdown file for each chat same directory as the conversations JSON file. The file name will be the chat title, with invalid filename characters replaced by spaces.
+Duplicate titles get ` (1)`, ` (2)` suffixes to keep names unique.
 
 For example, the Markdown output for a chat with the title `Medium-Style Table CSS` might look like this:
 
@@ -109,6 +110,7 @@ git commit . -m"$COMMIT_MSG"; git tag $VERSION; git push --follow-tags
 
 ## Release notes
 
+- [1.9.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.9.0): 31 Jul 2025. Append numeric suffixes for duplicate chat titles
 - [1.8.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.8.0): 30 Jul 2025. Standardized package.json & README.md
 - [1.7.1](https://npmjs.com/package/chatgpt-to-markdown/v/1.7.1): 29 Jun 2025. Add thinktime analysis tool as npx executable. Analyze thinking/reasoning time statistics from ChatGPT conversations
 - [1.6.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.6.0): 18 Jun 2025. Handle `thoughts`, `reasoning_recap`, `sonic_webpage`. Include projects

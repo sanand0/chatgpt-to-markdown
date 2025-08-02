@@ -378,6 +378,25 @@ describe("chatgptToMarkdown", () => {
     await expect(fs.access(path.join(tempDir, "abc123.md"))).resolves.not.toThrow();
   });
 
+  it("should append numeric suffix for duplicate titles", async () => {
+    const json = [
+      { title: "Dup", conversation_id: "1", create_time: 1, update_time: 1, mapping: {} },
+      { title: "Dup", conversation_id: "2", create_time: 1, update_time: 1, mapping: {} },
+      { title: "Dup", conversation_id: "3", create_time: 1, update_time: 1, mapping: {} },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    await expect(fs.access(path.join(tempDir, "Dup.md"))).resolves.not.toThrow();
+    await expect(fs.access(path.join(tempDir, "Dup (1).md"))).resolves.not.toThrow();
+    await expect(fs.access(path.join(tempDir, "Dup (2).md"))).resolves.not.toThrow();
+  });
+
+  it("should ignore existing files when naming", async () => {
+    await fs.writeFile(path.join(tempDir, "Dup.md"), "old");
+    const json = [{ title: "Dup", conversation_id: "1", create_time: 1, update_time: 1, mapping: {} }];
+    await chatgptToMarkdown(json, tempDir);
+    await expect(fs.access(path.join(tempDir, "Dup (1).md"))).rejects.toThrow();
+  });
+
   it("should handle thoughts content", async () => {
     const json = [
       {
