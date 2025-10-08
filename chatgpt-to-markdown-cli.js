@@ -1,22 +1,42 @@
 #!/usr/bin/env node
 import path from "path";
-import { promises as fs } from "fs";
-import chatgptToMarkdown from "./chatgpt-to-markdown.js";
+import { createReadStream } from "fs";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const StreamArray = require("stream-json/streamers/StreamArray");
+import { processConversation, formatDate } from "./chatgpt-to-markdown.js";
 
 async function run() {
   const filePath = process.argv[2] || "conversations.json";
-  let json;
+  const sourceDir = path.dirname(filePath);
+  const counts = {};
+
+  let processed = 0;
   try {
-    const data = await fs.readFile(filePath, "utf8");
-    json = JSON.parse(data);
-  } catch {
-    console.error(`Error: File '${filePath}' must be a JSON file`);
-    console.error("Usage: node chatgpt-to-markdown-cli.js [conversations.json]");
+    const arr = StreamArray.withParser();
+
+    await new Promise((resolve, reject) => {
+      arr.on("data", async ({ value }) => {
+        arr.pause();
+        try {
+          await processConversation(value, sourceDir, { counts, dateFormat: formatDate });
+          processed += 1;
+          if (processed % 100 === 0) process.stdout.write(".");
+          processed += 1;
+          arr.resume();
+        } catch (err) {
+          reject(err);
+        }
+      });
+      arr.on("end", () => resolve());
+      arr.on("error", reject);
+      createReadStream(filePath).on("error", reject).pipe(arr.input);
+    });
+  } catch (e) {
+    console.error(e.stack);
+    console.error("\nUsage: node chatgpt-to-markdown-cli.js [conversations.json]");
     process.exit(1);
   }
-
-  const sourceDir = path.dirname(filePath);
-  await chatgptToMarkdown(json, sourceDir);
 }
 
 run();

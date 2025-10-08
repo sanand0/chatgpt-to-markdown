@@ -132,28 +132,37 @@ async function chatgptToMarkdown(json, sourceDir, { dateFormat } = { dateFormat:
   if (!Array.isArray(json)) throw new TypeError("The first argument must be an array.");
   if (typeof sourceDir !== "string") throw new TypeError("The second argument must be a string.");
 
+  // Keep behavior stable for tests: sort then process sequentially
   json.sort((a, b) => a.create_time - b.create_time);
 
   const counts = {};
   for (const conversation of json) {
-    const sanitizedTitle = sanitizeFileName(conversation.title) || conversation.conversation_id;
-    const count = counts[sanitizedTitle] || 0;
-    counts[sanitizedTitle] = count + 1;
-    const fileName = `${sanitizedTitle}${count ? ` (${count})` : ""}.md`;
-    const filePath = path.join(sourceDir, fileName);
-    const title = `# ${wrapHtmlTagsInBackticks(conversation.title)}\n`;
-    const lines = [
-      `- Created: ${dateFormat(new Date(conversation.create_time * 1000))}\n`,
-      `- Updated: ${dateFormat(new Date(conversation.update_time * 1000))}\n`,
-      `- Link: https://chatgpt.com/c/${conversation.conversation_id}\n`,
-    ];
-    if (conversation.gizmo_id) lines.push(`- Project: https://chatgpt.com/g/${conversation.gizmo_id}/project\n`);
-    const metadata = lines.join("");
-    const messages = Object.values(conversation.mapping).map(nodeToMarkdown).join("");
-    const markdownContent = `${title}\n${metadata}\n${messages}`;
-    await fs.writeFile(filePath, markdownContent, "utf8");
-    await fs.utimes(filePath, conversation.update_time, conversation.create_time);
+    await processConversation(conversation, sourceDir, { dateFormat, counts });
   }
+}
+
+/**
+ * Writes one conversation to Markdown in `sourceDir`.
+ * Maintains stable filenames using `counts` across calls.
+ */
+export async function processConversation(conversation, sourceDir, { dateFormat = formatDate, counts = {} } = {}) {
+  const sanitizedTitle = sanitizeFileName(conversation.title) || conversation.conversation_id;
+  const count = counts[sanitizedTitle] || 0;
+  counts[sanitizedTitle] = count + 1;
+  const fileName = `${sanitizedTitle}${count ? ` (${count})` : ""}.md`;
+  const filePath = path.join(sourceDir, fileName);
+  const title = `# ${wrapHtmlTagsInBackticks(conversation.title)}\n`;
+  const lines = [
+    `- Created: ${dateFormat(new Date(conversation.create_time * 1000))}\n`,
+    `- Updated: ${dateFormat(new Date(conversation.update_time * 1000))}\n`,
+    `- Link: https://chatgpt.com/c/${conversation.conversation_id}\n`,
+  ];
+  if (conversation.gizmo_id) lines.push(`- Project: https://chatgpt.com/g/${conversation.gizmo_id}/project\n`);
+  const metadata = lines.join("");
+  const messages = Object.values(conversation.mapping).map(nodeToMarkdown).join("");
+  const markdownContent = `${title}\n${metadata}\n${messages}`;
+  await fs.writeFile(filePath, markdownContent, "utf8");
+  await fs.utimes(filePath, conversation.update_time, conversation.create_time);
 }
 
 // Export the convertToMarkdown function as the default export

@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-to-markdown",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "description": "Convert ChatGPT exported conversations.json to Markdown",
   "homepage": "https://github.com/sanand0/chatgpt-to-markdown",
   "repository": {
@@ -34,6 +34,9 @@
     "lint": "npm run lint:oxlint && npm run lint:js-md && npm run lint:html",
     "test": "npx -y vitest@3 run --globals",
     "prepublishOnly": "npm run lint && npm test"
+  },
+  "dependencies": {
+    "stream-json": "^1.9.1"
   },
   "keywords": [
     "chatgpt",
