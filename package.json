@@ -1,30 +1,31 @@
 {
   "name": "chatgpt-to-markdown",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Convert ChatGPT exported conversations.json to Markdown",
   "homepage": "https://github.com/sanand0/chatgpt-to-markdown",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/sanand0/chatgpt-to-markdown.git"
-  },
+  "repository": { "type": "git", "url": "https://github.com/sanand0/chatgpt-to-markdown.git" },
   "license": "MIT",
   "author": "Anand S <root.node@gmail.com>",
   "type": "module",
   "module": "chatgpt-to-markdown.js",
-  "prettier": {
-    "printWidth": 120
-  },
   "files": [
     "LICENSE",
     "README.md",
     "chatgpt-to-markdown.js",
+    "claude-to-markdown.js",
     "thinktime.js",
     "chatgpt-to-markdown-cli.js",
+    "claude-to-markdown-cli.js",
     "thinktime-cli.js"
   ],
-  "exports": "./chatgpt-to-markdown.js",
+  "exports": {
+    ".": "./chatgpt-to-markdown.js",
+    "./chatgpt": "./chatgpt-to-markdown.js",
+    "./claude": "./claude-to-markdown.js"
+  },
   "bin": {
     "chatgpt-to-markdown": "chatgpt-to-markdown-cli.js",
+    "claude-to-markdown": "claude-to-markdown-cli.js",
     "thinktime": "thinktime-cli.js"
   },
   "scripts": {
@@ -32,12 +33,6 @@
     "test": "npx -y vitest@3 run --globals",
     "prepublishOnly": "npm run lint && npm test"
   },
-  "dependencies": {
-    "stream-json": "^1.9.1"
-  },
-  "keywords": [
-    "chatgpt",
-    "markdown",
-    "converter"
-  ]
+  "dependencies": { "stream-json": "^1.9.1" },
+  "keywords": ["chatgpt", "claude", "markdown", "converter"]
 }

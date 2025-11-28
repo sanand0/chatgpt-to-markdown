@@ -5,7 +5,7 @@
 
 Convert ChatGPT conversation JSON files to Markdown format with ease.
 
-## Usage
+## ChatGPT exports
 
 Go to [chat.openai.com](https://chat.openai.com/) > Settings > Data controls > Export data and export your data.
 
@@ -46,6 +46,16 @@ table {
 ...
 ```
 ````
+
+### Claude exports
+
+Go to [claude.ai](https://claude.ai/) > Settings > Privacy > Export data and export your data. Unzip the file you're mailed and run:
+
+```bash
+npx -p chatgpt-to-markdown claude-to-markdown path/to/your/conversations.json
+```
+
+This writes a Markdown file per conversation (using the conversation name), including summaries, attachments (extracted content), files, thinking blocks, tool calls and tool results.
 
 ### Thinking Time Analysis
 
@@ -110,6 +120,7 @@ git commit . -m"$COMMIT_MSG"; git tag $VERSION; git push --follow-tags
 
 ## Release notes
 
+- [1.11.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.11.0): 28 Nov 2025. Add Claude converter + CLI, richer tool formatting (artifacts, web_search, bash_tool, create_file, str_replace, web_fetch, view, repl)
 - [1.10.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.10.0): 8 Oct 2025. Streams conversations.json to handle large files
 - [1.9.1](https://npmjs.com/package/chatgpt-to-markdown/v/1.9.1): 2 Aug 2025. Sort conversations by create_time to ensure chronological ordering of filenames
 - [1.9.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.9.0): 31 Jul 2025. Append numeric suffixes for duplicate chat titles
