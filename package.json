@@ -28,10 +28,7 @@
     "thinktime": "thinktime-cli.js"
   },
   "scripts": {
-    "lint:oxlint": "npx -y oxlint --fix",
-    "lint:js-md": "npx -y prettier@3.5 --print-width 120 --write '**/*.js' '!**/*.min.js' '!dist/**' '**/*.md'",
-    "lint:html": "npx -y js-beautify@1 '**/*.html' --type html --replace --indent-size 2 --max-preserve-newlines 1 --end-with-newline",
-    "lint": "npm run lint:oxlint && npm run lint:js-md && npm run lint:html",
+    "lint": "dprint fmt -c https://raw.githubusercontent.com/sanand0/scripts/refs/heads/main/dprint.jsonc && npx -y oxlint --fix",
     "test": "npx -y vitest@3 run --globals",
     "prepublishOnly": "npm run lint && npm test"
   },

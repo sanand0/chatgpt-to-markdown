@@ -1,8 +1,8 @@
 // index.test.js
 
 import { promises as fs } from "fs";
-import path from "path";
 import os from "os";
+import path from "path";
 import { default as chatgptToMarkdown, formatDate } from "./chatgpt-to-markdown";
 
 describe("chatgptToMarkdown", () => {
@@ -218,7 +218,7 @@ describe("chatgptToMarkdown", () => {
           0: {
             message: {
               author: { role: "tool" },
-              content: { content_type: "code", language: "javascript", text: 'console.log("Hello, world!");' },
+              content: { content_type: "code", language: "javascript", text: "console.log(\"Hello, world!\");" },
             },
           },
         },
@@ -226,7 +226,7 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain('```javascript\nconsole.log("Hello, world!");\n```\n');
+    expect(fileContent).toContain("```javascript\nconsole.log(\"Hello, world!\");\n```\n");
   });
 
   it("should skip user_editable_context content", async () => {

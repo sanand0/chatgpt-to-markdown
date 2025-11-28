@@ -15,14 +15,18 @@ function printResults(results) {
 
   console.log(`Total conversations: ${totalConvs.toLocaleString()}`);
   console.log(
-    `Conversations with thinking: ${thinkingConvs.toLocaleString()} (${((thinkingConvs / totalConvs) * 100).toFixed(1)}%)`,
+    `Conversations with thinking: ${thinkingConvs.toLocaleString()} (${
+      ((thinkingConvs / totalConvs) * 100).toFixed(1)
+    }%)`,
   );
   console.log(`Conversations without thinking: ${(totalConvs - thinkingConvs).toLocaleString()}`);
 
   if (thinkingConvs > 0) {
     console.log(`\nTHINKING TIME STATISTICS:`);
     console.log(
-      `Total thinking time: ${results.totalThinkingTime.toFixed(1)} seconds (${(results.totalThinkingTime / 60).toFixed(1)} minutes)`,
+      `Total thinking time: ${results.totalThinkingTime.toFixed(1)} seconds (${
+        (results.totalThinkingTime / 60).toFixed(1)
+      } minutes)`,
     );
     console.log(`Total thinking blocks: ${results.totalThinkingBlocks.toLocaleString()}`);
     console.log(
@@ -44,7 +48,9 @@ function printResults(results) {
     sortedConvs.forEach((conv, i) => {
       const title = conv.title.length > 50 ? conv.title.substring(0, 50) + "..." : conv.title;
       console.log(
-        `  ${(i + 1).toString().padStart(2)}. ${conv.thinkingTimeSec.toFixed(1).padStart(6)}s (${conv.thinkingBlocks} blocks) - ${title}`,
+        `  ${(i + 1).toString().padStart(2)}. ${
+          conv.thinkingTimeSec.toFixed(1).padStart(6)
+        }s (${conv.thinkingBlocks} blocks) - ${title}`,
       );
     });
 
@@ -52,14 +58,12 @@ function printResults(results) {
     const sortedBlocks = results.allThinkingBlocks.sort((a, b) => b.durationSec - a.durationSec).slice(0, 10);
 
     sortedBlocks.forEach((block, i) => {
-      const title =
-        block.conversationTitle.length > 30
-          ? block.conversationTitle.substring(0, 30) + "..."
-          : block.conversationTitle;
-      const userMsg =
-        block.precedingUserMessage.length > 80
-          ? block.precedingUserMessage.substring(0, 80) + "..."
-          : block.precedingUserMessage;
+      const title = block.conversationTitle.length > 30
+        ? block.conversationTitle.substring(0, 30) + "..."
+        : block.conversationTitle;
+      const userMsg = block.precedingUserMessage.length > 80
+        ? block.precedingUserMessage.substring(0, 80) + "..."
+        : block.precedingUserMessage;
       console.log(`  ${(i + 1).toString().padStart(2)}. ${block.durationSec.toFixed(1).padStart(6)}s - ${title}`);
       console.log(`      User: ${userMsg}`);
       console.log();

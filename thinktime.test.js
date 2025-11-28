@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
-import path from "path";
 import os from "os";
+import path from "path";
 
 async function analyzeAllConversations(filename) {
   const data = JSON.parse(await fs.readFile(filename, "utf8"));

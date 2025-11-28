@@ -18,7 +18,7 @@ npx chatgpt-to-markdown path/to/your/conversations.json
 **NO NEED TO INSTALL** - `npx` will automatically install the package if it's not already installed.
 
 This will generate one Markdown file for each chat same directory as the conversations JSON file. The file name will be the chat title, with invalid filename characters replaced by spaces.
-Duplicate titles get ` (1)`, ` (2)` suffixes to keep names unique.
+Duplicate titles get `(1)`, `(2)` suffixes to keep names unique.
 
 For example, the Markdown output for a chat with the title `Medium-Style Table CSS` might look like this:
 

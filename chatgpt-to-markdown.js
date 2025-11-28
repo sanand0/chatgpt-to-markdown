@@ -66,8 +66,8 @@ function nodeToMarkdown(node) {
             typeof part == "string"
               ? `${part}\n\n`
               : part.content_type === "image_asset_pointer"
-                ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt ?? ""}\n\n`
-                : `${part.content_type}\n\n`,
+              ? `Image (${part.width}x${part.height}): ${part?.metadata?.dalle?.prompt ?? ""}\n\n`
+              : `${part.content_type}\n\n`
           )
           .join("");
         break;

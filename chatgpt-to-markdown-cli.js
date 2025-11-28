@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import path from "path";
 import { createReadStream } from "fs";
 import { createRequire } from "module";
+import path from "path";
 const require = createRequire(import.meta.url);
 const StreamArray = require("stream-json/streamers/StreamArray");
-import { processConversation, formatDate } from "./chatgpt-to-markdown.js";
+import { formatDate, processConversation } from "./chatgpt-to-markdown.js";
 
 async function run() {
   const filePath = process.argv[2] || "conversations.json";
