@@ -247,7 +247,7 @@ export async function processConversation(conversation, sourceDir, { dateFormat 
   const lines = [
     `- Created: ${dateFormat(new Date(conversation.created_at))}\n`,
     `- Updated: ${dateFormat(new Date(conversation.updated_at))}\n`,
-    `- Conversation ID: ${conversation.uuid}\n`,
+    `- Link: https://claude.ai/chat/${conversation.uuid}\n`,
   ];
   if (conversation.account?.uuid) lines.push(`- Account: ${conversation.account.uuid}\n`);
   const metadata = lines.join("");

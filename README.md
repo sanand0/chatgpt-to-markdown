@@ -112,7 +112,8 @@ git clone https://github.com/sanand0/chatgpt-to-markdown.git
 cd chatgpt-to-markdown
 
 npm install
-npm run lint && npm run build && npm test
+npm run lint
+npm test
 
 npm publish
 git commit . -m"$COMMIT_MSG"; git tag $VERSION; git push --follow-tags
@@ -120,6 +121,7 @@ git commit . -m"$COMMIT_MSG"; git tag $VERSION; git push --follow-tags
 
 ## Release notes
 
+- [1.12.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.12.0): 22 Jan 2026. Claude Markdown metadata shows created, updated, and link - same as ChatGPT
 - [1.11.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.11.0): 28 Nov 2025. Add Claude converter + CLI, richer tool formatting (artifacts, web_search, bash_tool, create_file, str_replace, web_fetch, view, repl)
 - [1.10.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.10.0): 8 Oct 2025. Streams conversations.json to handle large files
 - [1.9.1](https://npmjs.com/package/chatgpt-to-markdown/v/1.9.1): 2 Aug 2025. Sort conversations by create_time to ensure chronological ordering of filenames

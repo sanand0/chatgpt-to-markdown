@@ -44,9 +44,10 @@ describe("claudeToMarkdown", () => {
     const content = await fs.readFile(path.join(tempDir, "Alpha Chat.md"), "utf8");
 
     expect(content).toContain("# Alpha Chat");
-    expect(content).toContain("- Conversation ID: conv-1");
-    expect(content).toContain("- Account: acct-1");
     expect(content).toContain("- Created: " + formatDate(new Date("2025-01-01T00:00:00Z")));
+    expect(content).toContain("- Updated: " + formatDate(new Date("2025-01-02T00:00:00Z")));
+    expect(content).toContain("- Link: https://claude.ai/chat/conv-1");
+    expect(content).toContain("- Account: acct-1");
     expect(content).toContain("## Summary");
     expect(content).toContain("Short summary");
     expect(content).toContain("doc.txt (text/plain) 10 bytes");
