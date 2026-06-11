@@ -45,10 +45,9 @@ describe("chatgptToMarkdown", () => {
 - Updated: ${formatDate(1630458000 * 1000)}
 - Link: https://chatgpt.com/c/abc123
 
-## user (John)
+## User (John)
 
-    Hello
-
+> Hello
 
 `);
   });
@@ -425,7 +424,7 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain("##### Sum");
+    expect(fileContent).toContain("<summary>Sum</summary>");
     expect(fileContent).toContain("Detail");
   });
 
@@ -444,7 +443,7 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain("> recap");
+    expect(fileContent).toContain("*recap*");
   });
 
   it("should handle sonic_webpage content", async () => {
@@ -483,5 +482,121 @@ describe("chatgptToMarkdown", () => {
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
     expect(fileContent).toContain("- Project: https://chatgpt.com/g/g123/project");
+  });
+
+  it("should render only the current conversation branch", async () => {
+    const json = [
+      {
+        title: "Branched",
+        conversation_id: "abc",
+        create_time: 1,
+        update_time: 1,
+        current_node: "current",
+        mapping: {
+          root: {
+            id: "root",
+            parent: null,
+            message: { author: { role: "user" }, content: { content_type: "text", parts: ["Question"] } },
+          },
+          old: {
+            id: "old",
+            parent: "root",
+            message: { author: { role: "assistant" }, content: { content_type: "text", parts: ["Old answer"] } },
+          },
+          current: {
+            id: "current",
+            parent: "root",
+            message: { author: { role: "assistant" }, content: { content_type: "text", parts: ["Current answer"] } },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Branched.md"), "utf8");
+    expect(fileContent).toContain("Current answer");
+    expect(fileContent).not.toContain("Old answer");
+  });
+
+  it("should group adjacent messages from the same author", async () => {
+    const json = [
+      {
+        title: "Grouped",
+        conversation_id: "abc",
+        create_time: 1,
+        update_time: 1,
+        mapping: {
+          one: { message: { author: { role: "assistant" }, content: { content_type: "text", parts: ["One"] } } },
+          two: { message: { author: { role: "assistant" }, content: { content_type: "text", parts: ["Two"] } } },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Grouped.md"), "utf8");
+    expect(fileContent.match(/## Assistant/g)).toHaveLength(1);
+  });
+
+  it("should render citations, attachments, model, and flags", async () => {
+    const json = [
+      {
+        title: "Rich export",
+        conversation_id: "abc",
+        create_time: 1,
+        update_time: 1,
+        default_model_slug: "gpt-test",
+        is_starred: true,
+        is_study_mode: true,
+        mapping: {
+          node: {
+            message: {
+              author: { role: "assistant" },
+              content: { content_type: "text", parts: ["Claim citeturn0search1"] },
+              metadata: {
+                attachments: [{ id: "file-1", name: "report.pdf", mime_type: "application/pdf" }],
+                content_references: [
+                  {
+                    items: [
+                      {
+                        attribution: "Example",
+                        url: "https://example.com/a?utm_source=chatgpt.com",
+                        refs: [{ turn_index: 0, ref_type: "search", ref_index: 1 }],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir, { assetFiles: { "file-1": "file-1.dat" } });
+    const fileContent = await fs.readFile(path.join(tempDir, "Rich export.md"), "utf8");
+    expect(fileContent).toContain("- Model: gpt-test");
+    expect(fileContent).toContain("- Flags: Starred, Study mode");
+    expect(fileContent).toContain("[Example](https://example.com/a)");
+    expect(fileContent).toContain("[report.pdf](file-1.dat) (application/pdf)");
+  });
+
+  it("should remove unresolved ChatGPT citation markers", async () => {
+    const json = [
+      {
+        title: "Citation",
+        conversation_id: "abc",
+        create_time: 1,
+        update_time: 1,
+        mapping: {
+          node: {
+            message: {
+              author: { role: "assistant" },
+              content: { content_type: "text", parts: ["Claim. citeturn0search1"] },
+            },
+          },
+        },
+      },
+    ];
+    await chatgptToMarkdown(json, tempDir);
+    const fileContent = await fs.readFile(path.join(tempDir, "Citation.md"), "utf8");
+    expect(fileContent).toContain("Claim.");
+    expect(fileContent).not.toContain("cite");
   });
 });

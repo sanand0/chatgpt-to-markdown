@@ -1,9 +1,12 @@
 {
   "name": "chatgpt-to-markdown",
-  "version": "1.12.0",
-  "description": "Convert ChatGPT exported conversations.json to Markdown",
+  "version": "1.13.0",
+  "description": "Convert ChatGPT and Claude conversation archives to Markdown",
   "homepage": "https://github.com/sanand0/chatgpt-to-markdown",
-  "repository": { "type": "git", "url": "https://github.com/sanand0/chatgpt-to-markdown.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanand0/chatgpt-to-markdown.git"
+  },
   "license": "MIT",
   "author": "Anand S <root.node@gmail.com>",
   "type": "module",
@@ -33,6 +36,13 @@
     "test": "npx -y vitest@3 run --globals",
     "prepublishOnly": "npm run lint && npm test"
   },
-  "dependencies": { "stream-json": "^1.9.1" },
-  "keywords": ["chatgpt", "claude", "markdown", "converter"]
+  "dependencies": {
+    "stream-json": "^1.9.1"
+  },
+  "keywords": [
+    "chatgpt",
+    "claude",
+    "markdown",
+    "converter"
+  ]
 }

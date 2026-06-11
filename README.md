@@ -1,9 +1,9 @@
 # ChatGPT to Markdown
 
+Convert ChatGPT and Claude chat export JSON files to Markdown format with ease.
+
 [![npm version](https://badge.fury.io/js/chatgpt-to-markdown.svg)](https://badge.fury.io/js/chatgpt-to-markdown)
 [![license](https://img.shields.io/npm/l/smartart.svg)](https://github.com/sanand0/smartart/blob/main/LICENSE)
-
-Convert ChatGPT conversation JSON files to Markdown format with ease.
 
 ## ChatGPT exports
 
@@ -12,13 +12,19 @@ Go to [chat.openai.com](https://chat.openai.com/) > Settings > Data controls > E
 Unzip the file you're mailed and run:
 
 ```bash
-npx chatgpt-to-markdown path/to/your/conversations.json
+npx chatgpt-to-markdown path/to/your/chatgpt-archive
 ```
 
 **NO NEED TO INSTALL** - `npx` will automatically install the package if it's not already installed.
 
-This will generate one Markdown file for each chat same directory as the conversations JSON file. The file name will be the chat title, with invalid filename characters replaced by spaces.
+The command accepts either the exported archive directory or a specific `conversations.json` / `conversations-001.json`
+file. Directory input reads the archive manifest and converts every conversation shard.
+
+This generates one Markdown file for each chat in the archive directory. The file name is the chat title, with invalid filename characters replaced by spaces.
 Duplicate titles get `(1)`, `(2)` suffixes to keep names unique.
+
+The Markdown follows the active conversation branch, links exported attachments, converts ChatGPT citation markers into
+normal Markdown links, collapses reasoning blocks, and includes useful metadata such as the model and starred/archive flags.
 
 For example, the Markdown output for a chat with the title `Medium-Style Table CSS` might look like this:
 
@@ -27,12 +33,14 @@ For example, the Markdown output for a chat with the title `Medium-Style Table C
 
 - Created: 26/9/2023, 10:10:54 am
 - Updated: 26/9/2023, 10:11:19 am
+- Link: https://chatgpt.com/c/example
+- Model: gpt-5
 
-## user
+## User
 
-    Generate CSS for a Medium-style table
+> Generate CSS for a Medium-style table
 
-## assistant
+## Assistant
 
 Creating a Medium-style table requires a clean and minimalist design. Here's a simple CSS snippet to help you create a table that resembles the style seen on Medium. This code assumes that you have a basic HTML table structure in place.
 
@@ -97,13 +105,16 @@ const json = [
 const sourceDir = "./output";
 const options = {
   dateFormat: (d) => d.toLocaleString(),
+  // Optional map from ChatGPT asset IDs to archive-relative file paths
+  assetFiles: { "file-abc": "file-abc.dat" },
 };
-chatgptToMarkdown(json, sourceDir);
+chatgptToMarkdown(json, sourceDir, options);
 ```
 
 ### Options
 
 - `dateFormat`: A function that takes a `Date` object and returns a string. Defaults to a string format like "1 Jan 2023 11:30 PM".
+- `assetFiles`: An optional object mapping ChatGPT asset IDs to archive-relative file paths.
 
 ## Development
 
@@ -121,6 +132,7 @@ git commit . -m"$COMMIT_MSG"; git tag $VERSION; git push --follow-tags
 
 ## Release notes
 
+- [1.13.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.13.0): 11 Jun 2026. Read sharded ChatGPT archive directories; follow active branches; link attachments and citations; improve Markdown formatting
 - [1.12.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.12.0): 22 Jan 2026. Claude Markdown metadata shows created, updated, and link - same as ChatGPT
 - [1.11.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.11.0): 28 Nov 2025. Add Claude converter + CLI, richer tool formatting (artifacts, web_search, bash_tool, create_file, str_replace, web_fetch, view, repl)
 - [1.10.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.10.0): 8 Oct 2025. Streams conversations.json to handle large files
