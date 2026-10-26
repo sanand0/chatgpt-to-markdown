@@ -2,7 +2,7 @@
 import { createReadStream, promises as fs } from "fs";
 import { createRequire } from "module";
 import path from "path";
-import { formatDate, processConversation } from "./chatgpt-to-markdown.js";
+import { processConversation } from "./chatgpt-to-markdown.js";
 
 const require = createRequire(import.meta.url);
 const StreamArray = require("stream-json/streamers/StreamArray");
@@ -54,7 +54,6 @@ async function run() {
     const options = {
       assetFiles: await readAssetFiles(sourceDir),
       counts: {},
-      dateFormat: formatDate,
       progress: { processed: 0 },
     };
     for (const file of files) await processFile(file, sourceDir, options);

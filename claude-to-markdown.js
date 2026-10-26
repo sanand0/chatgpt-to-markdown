@@ -1,221 +1,12 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { codeFence, details, frontmatter, isoDate } from "./scraper-format.js";
 
-/**
- * Replace characters that are illegal in filenames.
- */
 function sanitizeFileName(title) {
-  return title
-    .replace(/[<>:"/\\|?*\n]/g, " ")
-    .replace(/[^\w\s]/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(title ?? "").replace(/[<>:"/\\|?*\n]/g, " ").replace(/[^\w\s]/gi, " ").replace(/\s+/g, " ").trim();
 }
 
-function wrapHtmlTagsInBackticks(text) {
-  return text.replace(/<[^>]+>/g, (match) => `\`${match}\``);
-}
-
-function indent(str) {
-  return str
-    .split("\n")
-    .map((v) => (v.trim() ? `    ${v}\n` : ""))
-    .join("");
-}
-
-function fence(code, lang = "") {
-  return "```" + lang + "\n" + code + "\n```";
-}
-
-const safeJson = (val) => {
-  if (val === null || val === undefined) return "";
-  if (typeof val === "string") {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return val;
-    }
-  }
-  return val;
-};
-
-const formatJson = (val) => fence(typeof val === "string" ? val : JSON.stringify(val, null, 2), "json");
-
-function normalizeToolName(name) {
-  if (!name) return "";
-  const lower = String(name).toLowerCase();
-  if (lower === "search") return "web_search";
-  return lower;
-}
-
-function formatToolUse(name, tool) {
-  name = normalizeToolName(name);
-  const { input, message } = tool;
-  switch (name) {
-    case "artifacts": {
-      const { command, id, type, title, path: p, content } = input || {};
-      const bits = [
-        `**artifacts** (${command ?? "run"})`,
-        id ? `- id: ${id}` : "",
-        title ? `- title: ${title}` : "",
-        type ? `- type: ${type}` : "",
-        p ? `- path: ${p}` : "",
-      ].filter(Boolean);
-      if (content) bits.push(`Content:\n${fence(content, type?.includes("markdown") ? "markdown" : "")}`);
-      return bits.join("\n");
-    }
-    case "web_search": {
-      const q = input?.query || input?.q;
-      const recency = input?.recency_days || input?.recency;
-      const topK = input?.top_k;
-      return [
-        `**web_search**`,
-        q ? `- query: ${q}` : "",
-        recency ? `- recency_days: ${recency}` : "",
-        topK ? `- top_k: ${topK}` : "",
-        message || "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-    }
-    case "bash_tool":
-      return [`**bash_tool**`, message || "", input?.command ? fence(input.command, "bash") : ""].filter(Boolean).join(
-        "\n\n",
-      );
-    case "create_file": {
-      const { path: p, file_text } = input || {};
-      return [`**create_file**`, p ? `- path: ${p}` : "", file_text ? fence(file_text, "markdown") : ""].filter(Boolean)
-        .join("\n\n");
-    }
-    case "str_replace": {
-      const { path: p, old_str, new_str } = input || {};
-      return [
-        "**str_replace**",
-        p ? `- path: ${p}` : "",
-        old_str ? `Old:\n${fence(old_str)}` : "",
-        new_str ? `New:\n${fence(new_str)}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n\n");
-    }
-    case "web_fetch":
-      return [`**web_fetch**`, input?.url ? `- url: ${input.url}` : "", message || ""].filter(Boolean).join("\n");
-    case "view": {
-      const { path: p, description } = input || {};
-      return [`**view**`, p ? `- path: ${p}` : "", description ? `- ${description}` : "", message || ""].filter(Boolean)
-        .join("\n");
-    }
-    case "repl":
-      return [`**repl**`, input?.code ? fence(input.code, "javascript") : ""].filter(Boolean).join("\n\n");
-    default:
-      return message || fence(JSON.stringify(tool, null, 2), "json");
-  }
-}
-
-function formatToolResult(name, result) {
-  name = normalizeToolName(name);
-  const isErr = result.is_error;
-  const header = `**${name} result${isErr ? " (error)" : ""}**`;
-
-  const prettyContent = () => {
-    const arr = Array.isArray(result.content) ? result.content : [];
-    const texts = arr
-      .map((c) => {
-        if (c?.text) {
-          const parsed = safeJson(c.text);
-          return typeof parsed === "string" ? parsed : formatJson(parsed);
-        }
-        if (c?.type === "text" && c?.text) return c.text;
-        return c && typeof c === "object" ? formatJson(c) : "";
-      })
-      .filter(Boolean);
-    return texts.join("\n\n");
-  };
-
-  switch (name) {
-    case "artifacts":
-      return [header, result.message || "", prettyContent()].filter(Boolean).join("\n\n");
-    case "web_search":
-      return [header, prettyContent() || formatJson(result)].filter(Boolean).join("\n\n");
-    case "bash_tool":
-      return [header, result.message || "", prettyContent()].filter(Boolean).join("\n\n");
-    case "create_file":
-      return [header, result.message || "", prettyContent()].filter(Boolean).join("\n\n");
-    case "str_replace":
-      return [header, result.message || "", prettyContent()].filter(Boolean).join("\n\n");
-    case "web_fetch":
-      return [header, result.message || "", prettyContent()].filter(Boolean).join("\n\n");
-    case "view":
-      return [header, prettyContent()].filter(Boolean).join("\n\n");
-    case "repl":
-      return [header, prettyContent()].filter(Boolean).join("\n\n");
-    default:
-      return [header, result.message || "", prettyContent() || formatJson(result)].filter(Boolean).join("\n\n");
-  }
-}
-
-function renderContent(content) {
-  if (!content) return "";
-
-  switch (content.type) {
-    case "text":
-      return content.text ?? "";
-    case "thinking":
-      return fence(content.thinking ?? "", "thinking");
-    case "voice_note":
-      return `Voice note${content.title ? `: ${content.title}` : ""}\n\n${content.text ?? ""}`;
-    case "token_budget":
-      return "[token budget]";
-    case "tool_use":
-      return formatToolUse(content.name, content);
-    case "tool_result":
-      return formatToolResult(content.name, content);
-    default:
-      return fence(JSON.stringify(content, null, 2), "json");
-  }
-}
-
-function attachmentsToMarkdown(attachments = []) {
-  return attachments
-    .map((att) => {
-      const metaParts = [];
-      if (att.file_name) metaParts.push(att.file_name);
-      if (att.file_type) metaParts.push(`(${att.file_type})`);
-      if (att.file_size) metaParts.push(`${att.file_size} bytes`);
-      const meta = metaParts.join(" ");
-      const content = att.extracted_content ? `\n\n${att.extracted_content}` : "";
-      return `${meta}${content}`;
-    })
-    .filter(Boolean);
-}
-
-function filesToMarkdown(files = []) {
-  if (!files.length) return "";
-  const names = files.map((f) => f.file_name || f).join(", ");
-  return `Files: ${names}`;
-}
-
-function messageToMarkdown(message) {
-  if (!message) return "";
-  const parts = [];
-  if (Array.isArray(message.content) && message.content.length) {
-    parts.push(...message.content.map((c) => renderContent(c)).filter(Boolean));
-  } else if (message.text) {
-    parts.push(message.text);
-  }
-  parts.push(...attachmentsToMarkdown(message.attachments));
-  const filesLine = filesToMarkdown(message.files);
-  if (filesLine) parts.push(filesLine);
-
-  const body = parts.join("\n\n").trim();
-  if (!body) return "";
-
-  const header = `## ${message.sender ?? "unknown"}\n\n`;
-  const finalBody = message.sender === "human" ? indent(body) : body;
-  return `${header}${finalBody}\n\n`;
-}
-
-const dateFormat = new Intl.DateTimeFormat("en-US", {
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -223,44 +14,124 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
   hour12: true,
 });
-export const formatDate = (date) => dateFormat.format(date);
+export const formatDate = (date) => dateFormatter.format(date);
 
-async function claudeToMarkdown(json, sourceDir, { dateFormat } = { dateFormat: formatDate }) {
-  if (!Array.isArray(json)) throw new TypeError("The first argument must be an array.");
-  if (typeof sourceDir !== "string") throw new TypeError("The second argument must be a string.");
-
-  json.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  const counts = {};
-  for (const conversation of json) {
-    await processConversation(conversation, sourceDir, { dateFormat, counts });
+function safeJson(value) {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
   }
 }
 
-export async function processConversation(conversation, sourceDir, { dateFormat = formatDate, counts = {} } = {}) {
-  const sanitizedTitle = sanitizeFileName(conversation.name ?? "") || conversation.uuid;
-  const count = counts[sanitizedTitle] || 0;
-  counts[sanitizedTitle] = count + 1;
-  const fileName = `${sanitizedTitle}${count ? ` (${count})` : ""}.md`;
-  const filePath = path.join(sourceDir, fileName);
+function toolDetails(use, result) {
+  const name = use.name || "Tool";
+  const request = use.input === undefined
+    ? use.message ?? ""
+    : typeof use.input === "string"
+    ? use.input
+    : JSON.stringify(use.input, null, 2);
+  let body = `Request\n\n${codeFence(request)}`;
+  if (result) {
+    const contents = (result.content ?? []).map((entry) => {
+      const data = safeJson(entry?.text ?? entry);
+      return typeof data === "string" ? data : JSON.stringify(data, null, 2);
+    }).filter(Boolean);
+    const response = contents.join("\n\n") || result.message || "";
+    if (response) body += `\n\nResponse\n\n${codeFence(response)}`;
+  }
+  return details(`Called tool: ${name}`, body);
+}
 
-  const title = `# ${wrapHtmlTagsInBackticks(conversation.name ?? conversation.uuid)}\n`;
-  const lines = [
-    `- Created: ${dateFormat(new Date(conversation.created_at))}\n`,
-    `- Updated: ${dateFormat(new Date(conversation.updated_at))}\n`,
-    `- Link: https://claude.ai/chat/${conversation.uuid}\n`,
-  ];
-  if (conversation.account?.uuid) lines.push(`- Account: ${conversation.account.uuid}\n`);
-  const metadata = lines.join("");
+function thinkingBlock(part) {
+  const summary = part.summaries?.find(({ summary }) => summary)?.summary || "Thinking";
+  const content = (part.thinking || "").trim();
+  return details(summary, content ? `> ${content.replace(/\n/g, "\n> ")}` : "");
+}
 
-  const summary = conversation.summary ? `\n## Summary\n\n${conversation.summary}\n\n` : "";
-  const messages = (conversation.chat_messages ?? [])
-    .slice()
-    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-    .map(messageToMarkdown)
-    .join("");
-  const markdownContent = `${title}\n${metadata}${summary}${messages}`;
-  await fs.writeFile(filePath, markdownContent, "utf8");
-  await fs.utimes(filePath, new Date(conversation.updated_at), new Date(conversation.created_at));
+function renderContent(parts) {
+  const chunks = [];
+  for (let index = 0; index < parts.length; index++) {
+    const part = parts[index];
+    if (!part) continue;
+    if (part.type === "tool_use") {
+      // Claude exports commonly include the corresponding result immediately after a use.
+      const next = parts[index + 1];
+      const matches = next?.type === "tool_result"
+        && (!part.id || !next.tool_use_id || next.tool_use_id === part.id);
+      chunks.push(toolDetails(part, matches ? next : undefined));
+      if (matches) index++;
+      continue;
+    }
+    if (part.type === "tool_result") {
+      chunks.push(
+        details(
+          `Called tool: ${part.name || "Tool"}`,
+          `Response\n\n${codeFence((part.content || []).map((p) => p.text ?? JSON.stringify(p)).join("\n"))}`,
+        ),
+      );
+      continue;
+    }
+    if (part.type === "thinking") chunks.push(thinkingBlock(part));
+    else if (part.type === "text") chunks.push(part.text || "");
+    else if (part.type === "voice_note") {
+      chunks.push(`Voice note${part.title ? `: ${part.title}` : ""}\n\n${part.text || ""}`);
+    } else if (part.type === "token_budget") chunks.push("[token budget]");
+    else chunks.push(codeFence(JSON.stringify(part, null, 2), "json"));
+  }
+  return chunks.map((part) => part.trim()).filter(Boolean).join("\n\n");
+}
+
+function messageMarkdown(message) {
+  if (!message) return "";
+  const role = message.sender === "human" ? "User" : message.sender === "assistant" ? "Claude" : null;
+  if (!role) return "";
+  const body = [];
+  const contents = Array.isArray(message.content) && message.content.length
+    ? renderContent(message.content)
+    : (message.text || "");
+  if (contents) body.push(contents);
+  for (const attachment of message.attachments ?? []) {
+    const meta = [
+      attachment.file_name,
+      attachment.file_type ? `(${attachment.file_type})` : "",
+      attachment.file_size ? `${attachment.file_size} bytes` : "",
+    ].filter(Boolean).join(" ");
+    if (meta) body.push(`* Attachment: ${meta}`);
+    if (attachment.extracted_content) body.push(attachment.extracted_content);
+  }
+  if (message.files?.length) body.push(`Files: ${message.files.map((f) => f.file_name || f).join(", ")}`);
+  const text = body.join("\n\n").trim();
+  return text ? `## ${role}\n\n${text}\n\n---\n\n` : "";
+}
+
+async function claudeToMarkdown(json, sourceDir, { dateFormat } = {}) {
+  if (!Array.isArray(json)) throw new TypeError("The first argument must be an array.");
+  if (typeof sourceDir !== "string") throw new TypeError("The second argument must be a string.");
+  json.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const counts = {};
+  for (const conversation of json) await processConversation(conversation, sourceDir, { counts, dateFormat });
+}
+
+export async function processConversation(conversation, sourceDir, { counts = {}, dateFormat } = {}) {
+  const title = conversation.name || conversation.uuid || "Claude Conversation";
+  const name = sanitizeFileName(title) || conversation.uuid || "Claude Conversation";
+  const count = counts[name] ?? 0;
+  counts[name] = count + 1;
+  const filename = `${name}${count ? ` (${count})` : ""}.md`;
+  const date = isoDate(conversation.updated_at ?? conversation.created_at);
+  const formatted = dateFormat && date ? dateFormat(new Date(date)) : date;
+  const source = conversation.uuid ? `https://claude.ai/chat/${conversation.uuid}` : "";
+  const messages = (conversation.chat_messages ?? []).slice().sort((a, b) =>
+    new Date(a.created_at ?? 0) - new Date(b.created_at ?? 0)
+  );
+  const markdown = frontmatter(title, formatted, source) + messages.map(messageMarkdown).join("");
+  const file = path.join(sourceDir, filename);
+  await fs.writeFile(file, markdown, "utf8");
+  if (conversation.updated_at && conversation.created_at) {
+    await fs.utimes(file, new Date(conversation.updated_at), new Date(conversation.created_at));
+  }
 }
 
 export default claudeToMarkdown;

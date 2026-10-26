@@ -4,7 +4,7 @@ import { createRequire } from "module";
 import path from "path";
 const require = createRequire(import.meta.url);
 const StreamArray = require("stream-json/streamers/StreamArray");
-import { formatDate, processConversation } from "./claude-to-markdown.js";
+import { processConversation } from "./claude-to-markdown.js";
 
 async function run() {
   const filePath = process.argv[2] || "conversations.json";
@@ -17,7 +17,7 @@ async function run() {
     await new Promise((resolve, reject) => {
       arr.on("data", ({ value }) => {
         arr.pause();
-        processConversation(value, sourceDir, { counts, dateFormat: formatDate })
+        processConversation(value, sourceDir, { counts })
           .then(() => {
             processed += 1;
             if (processed % 100 === 0) process.stdout.write(".");

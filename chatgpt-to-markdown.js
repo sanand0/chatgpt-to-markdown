@@ -1,48 +1,9 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { codeFence, details, frontmatter, isoDate } from "./scraper-format.js";
 
-/**
- * Sanitizes a file name by replacing invalid characters with spaces.
- * @param {string} title - The title to sanitize.
- * @returns {string} - The sanitized title.
- */
 function sanitizeFileName(title) {
-  return title
-    .replace(/[<>:"/\\|?*\n]/g, " ")
-    .replace(/[^\w\s]/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Wraps HTML tags in backticks.
- * @param {string} text - The text to process.
- * @returns {string} - The text with HTML tags wrapped in backticks.
- */
-function wrapHtmlTagsInBackticks(text) {
-  return text.replace(/<[^>]+>/g, (match) => `\`${match}\``);
-}
-
-/**
- * Indents a string by 4 spaces.
- * @param {string} str - The string to indent.
- * @returns {string} - The indented string.
- * @example
- * indent("foo\nbar\nbaz");
- * //=> "    foo\n    bar\n    baz"
- */
-function indent(str) {
-  return str
-    .split("\n")
-    .map((v) => (v.trim() ? `    ${v}\n` : ""))
-    .join("");
-}
-
-function blockquote(str) {
-  return str
-    .split("\n")
-    .map((v) => (v ? `> ${v}` : ">"))
-    .join("\n");
+  return String(title ?? "").replace(/[<>:"/\\|?*\n]/g, " ").replace(/[^\w\s]/gi, " ").replace(/\s+/g, " ").trim();
 }
 
 function cleanUrl(url) {
@@ -56,110 +17,133 @@ function cleanUrl(url) {
 }
 
 function renderCitations(text, references = []) {
-  const citedReferences = references.filter(({ items }) => items?.some(({ url }) => url));
-  let referenceIndex = 0;
-  return text.replace(/cite([^]+)/g, () => {
-    const links = (citedReferences[referenceIndex++]?.items ?? [])
-      .filter(({ url }) => url)
-      .map((source) => `[${source.attribution ?? source.title ?? "source"}](${cleanUrl(source.url)})`);
-    return links.length ? [...new Set(links)].join(", ") : "";
+  const cited = references.filter(({ items }) => items?.some(({ url }) => url));
+  let position = 0;
+  return String(text ?? "").replace(/cite([^]+)/g, () => {
+    const sources = cited[position++]?.items ?? [];
+    return [
+      ...new Set(
+        sources.filter(({ url }) => url).map(({ attribution, title, url }) =>
+          `[${attribution || title || "source"}](${cleanUrl(url)})`
+        ),
+      ),
+    ].join(", ");
   });
 }
 
 function assetMarkdown(part, attachments, assetFiles) {
-  const assetId = part.asset_pointer?.replace(/^.*:\/\//, "");
-  const attachment = attachments.find(({ id }) => id === assetId);
-  const label = attachment?.name ?? assetId ?? "Image";
-  const archiveFile = assetFiles?.[assetId];
+  const id = part.asset_pointer?.replace(/^.*:\/\//, "");
+  const attachment = attachments.find(({ id: other }) => id === other);
+  const name = attachment?.name ?? id ?? "Image";
+  const filename = assetFiles?.[id];
   const dimensions = part.width && part.height ? ` (${part.width}x${part.height})` : "";
   const prompt = part?.metadata?.dalle?.prompt;
-  if (archiveFile) return `[${label}](${encodeURI(archiveFile)})${dimensions}${prompt ? `: ${prompt}` : ""}`;
-  return `Image${dimensions}${prompt ? `: ${prompt}` : ""}`;
+  return `${filename ? `[${name}](${encodeURI(filename)})` : "Image"}${dimensions}${prompt ? `: ${prompt}` : ""}`;
 }
 
-function attachmentsMarkdown(attachments, renderedAssetIds, assetFiles) {
-  const links = attachments
-    .filter(({ id }) => !renderedAssetIds.has(id) && assetFiles?.[id])
-    .map(({ id, name, mime_type }) =>
-      `- [${name ?? id}](${encodeURI(assetFiles[id])})${mime_type ? ` (${mime_type})` : ""}`
-    );
-  return links.length ? `**Attachments**\n\n${links.join("\n")}` : "";
-}
-
-function nodeToMarkdown(node, { assetFiles, showHeader = true } = {}) {
-  try {
-    const message = node.message;
-    const content = message?.content;
-    if (!content) return "";
-    const attachments = message.metadata?.attachments ?? [];
-    const renderedAssetIds = new Set();
-    let body;
-    switch (content.content_type) {
-      case "text":
-        body = renderCitations(content.parts.join("\n"), message.metadata?.content_references);
-        break;
-      case "code":
-        body = "```" + content.language.replace("unknown", "") + "\n" + content.text + "\n```";
-        break;
-      case "execution_output":
-        body = "```\n" + content.text + "\n```";
-        break;
-      case "multimodal_text":
-        body = content.parts
-          .map((part) => {
-            if (typeof part == "string") return `${renderCitations(part, message.metadata?.content_references)}\n\n`;
-            if (part.content_type === "image_asset_pointer") {
-              renderedAssetIds.add(part.asset_pointer?.replace(/^.*:\/\//, ""));
-              return `${assetMarkdown(part, attachments, assetFiles)}\n\n`;
-            }
-            return `${part.content_type}\n\n`;
-          })
-          .join("");
-        break;
-      case "tether_browsing_display":
-        body = "```\n" + (content.summary ? `${content.summary}\n` : "") + content.result + "\n```";
-        break;
-      case "tether_quote":
-        body = blockquote(`${content.title} (${content.url})\n\n${content.text}`);
-        break;
-      case "system_error":
-        body = `${content.name}\n\n${content.text}\n\n`;
-        break;
-      case "user_editable_context":
-        body = "";
-        break;
-      case "thoughts":
-        body = content.thoughts
-          .map((thought) =>
-            `<details>\n<summary>${thought.summary || "Reasoning"}</summary>\n\n${thought.content}\n\n</details>`
-          )
-          .join("\n\n");
-        break;
-      case "reasoning_recap":
-        body = `*${content.content}*`;
-        break;
-      case "sonic_webpage":
-        body = "```\n" + `${content.title} (${content.url})\n\n${content.text}` + "\n```";
-        break;
-      default:
-        body = `\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\``;
-    }
-    const attachmentBody = attachmentsMarkdown(attachments, renderedAssetIds, assetFiles);
-    if (attachmentBody) body = `${body}\n\n${attachmentBody}`;
-    if (!body.trim()) return "";
-    const author = message.author;
-    if (author.role == "user") body = blockquote(body);
-    if (author.role == "tool" && !body.startsWith("```") && !body.endsWith("```")) body = indent(body);
-    const role = author.role.charAt(0).toUpperCase() + author.role.slice(1);
-    const header = showHeader ? `## ${role}${author.name ? ` (${author.name})` : ""}\n\n` : "";
-    return `${header}${body}\n\n`;
-  } catch (err) {
-    err.message += `\nNode: ${JSON.stringify(node)}`;
-    throw err;
+function bodyMarkdown(message, assetFiles) {
+  const content = message.content;
+  if (!content || content.content_type === "user_editable_context") return "";
+  const attachments = message.metadata?.attachments ?? [];
+  const rendered = new Set();
+  const cite = (text) => renderCitations(text, message.metadata?.content_references);
+  let body = "";
+  switch (content.content_type) {
+    case "text":
+      body = (content.parts ?? []).filter((p) => typeof p === "string").map(cite).join("\n");
+      break;
+    case "code":
+      body = codeFence(content.text, content.language === "unknown" ? "" : content.language);
+      break;
+    case "execution_output":
+      body = codeFence(content.text);
+      break;
+    case "multimodal_text":
+      body = (content.parts ?? []).map((part) => {
+        if (typeof part === "string") return cite(part);
+        if (part?.content_type === "image_asset_pointer") {
+          rendered.add(part.asset_pointer?.replace(/^.*:\/\//, ""));
+          return assetMarkdown(part, attachments, assetFiles);
+        }
+        if (part?.content_type === "text") return cite(part.text);
+        return part?.content_type || "";
+      }).filter(Boolean).join("\n\n");
+      break;
+    case "tether_browsing_display":
+      body = codeFence([content.summary, content.result].filter(Boolean).join("\n"));
+      break;
+    case "tether_quote":
+      body = `> ${[`${content.title} (${content.url})`, content.text].join("\n\n").replace(/\n/g, "\n> ")}`;
+      break;
+    case "system_error":
+      body = [content.name, content.text].filter(Boolean).join("\n\n");
+      break;
+    case "thoughts":
+      body = (content.thoughts ?? []).filter((thought) => thought.content?.trim()).map((thought) =>
+        details(thought.summary || "Thinking", `> ${thought.content.trim().replace(/\n/g, "\n> ")}`)
+      ).join("\n\n");
+      break;
+    case "reasoning_recap":
+      body = content.content ? `*${content.content}*` : "";
+      break;
+    case "sonic_webpage":
+      body = codeFence(`${content.title} (${content.url})\n\n${content.text}`);
+      break;
+    default:
+      body = codeFence(JSON.stringify(content, null, 2), "json");
   }
+  const extra = attachments.filter(({ id }) => !rendered.has(id) && assetFiles?.[id]).map(({ id, name, mime_type }) =>
+    `* Attachment: [${name ?? id}](${encodeURI(assetFiles[id])})${mime_type ? ` (${mime_type})` : ""}`
+  );
+  if (extra.length) body = [body, extra.join("\n")].filter(Boolean).join("\n\n");
+  return body.trim();
 }
 
-const dateFormat = new Intl.DateTimeFormat("en-US", {
+function currentBranch(conversation) {
+  const mapping = conversation.mapping ?? {};
+  if (!conversation.current_node || !mapping[conversation.current_node]) {
+    return Object.values(mapping).sort((a, b) => (a.message?.create_time ?? 0) - (b.message?.create_time ?? 0));
+  }
+  const result = [];
+  const seen = new Set();
+  let id = conversation.current_node;
+  while (id && mapping[id] && !seen.has(id)) {
+    seen.add(id);
+    result.unshift(mapping[id]);
+    id = mapping[id].parent;
+  }
+  return result;
+}
+
+function conversationTurns(conversation, assetFiles) {
+  const turns = [];
+  const appendToAssistant = (body) => {
+    if (!body) return;
+    const last = turns[turns.length - 1];
+    if (last?.role === "assistant") last.body += `\n\n${body}`;
+    else turns.push({ role: "assistant", body });
+  };
+  for (const node of currentBranch(conversation)) {
+    const message = node?.message;
+    const role = message?.author?.role;
+    if (!["user", "assistant", "tool"].includes(role)) continue;
+    const body = bodyMarkdown(message, assetFiles);
+    if (!body) continue;
+    const type = message.content?.content_type;
+    if (role === "tool") {
+      appendToAssistant(details(`Called tool: ${message.author?.name ?? "Tool"}`, body));
+      continue;
+    }
+    if (role === "assistant" && ["thoughts", "reasoning_recap"].includes(type)) {
+      appendToAssistant(body);
+      continue;
+    }
+    turns.push({ role, body, timestamp: isoDate(message.create_time) });
+  }
+  return turns;
+}
+
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -167,94 +151,37 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
   hour12: true,
 });
-export const formatDate = (date) => dateFormat.format(date);
+export const formatDate = (date) => dateFormatter.format(date);
 
-/**
- * Converts a JSON object to markdown and saves it to a file.
- * @param {Object[]} json - The JSON object to convert.
- * @param {string} sourceDir - The directory to save the markdown files in.
- * @param {Object} [options] - The options object.
- * @param {Function} [options.dateFormat] - The function to format dates with.
- * @returns {Promise<void>} - A promise that resolves when the file is saved.
- * @example
- * const json = [ ... ];
- * await convertToMarkdown(json, "./output");
- * //=> Creates a markdown file for each conversation in the output directory
- */
-async function chatgptToMarkdown(json, sourceDir, { dateFormat = formatDate, assetFiles } = {}) {
+/** Convert ChatGPT conversations into the same Markdown transcript as chatgptscraper.js. */
+async function chatgptToMarkdown(json, sourceDir, { assetFiles, dateFormat } = {}) {
   if (!Array.isArray(json)) throw new TypeError("The first argument must be an array.");
   if (typeof sourceDir !== "string") throw new TypeError("The second argument must be a string.");
-
-  // Keep behavior stable for tests: sort then process sequentially
-  json.sort((a, b) => a.create_time - b.create_time);
-
+  json.sort((a, b) => (a.create_time ?? 0) - (b.create_time ?? 0));
   const counts = {};
   for (const conversation of json) {
     await processConversation(conversation, sourceDir, { assetFiles, dateFormat, counts });
   }
 }
 
-function currentBranch(conversation) {
-  if (!conversation.current_node || !conversation.mapping?.[conversation.current_node]) {
-    return Object.values(conversation.mapping ?? {});
-  }
-  const nodes = [];
-  const visited = new Set();
-  let node = conversation.mapping[conversation.current_node];
-  while (node && !visited.has(node.id)) {
-    visited.add(node.id);
-    nodes.unshift(node);
-    node = conversation.mapping[node.parent];
-  }
-  return nodes;
+/** Write a single conversation; shared counts keep duplicate filenames unique across shards. */
+export async function processConversation(conversation, sourceDir, { assetFiles, dateFormat, counts = {} } = {}) {
+  const title = conversation.title || conversation.conversation_id || "Untitled conversation";
+  const name = sanitizeFileName(title) || conversation.conversation_id || "Untitled conversation";
+  const count = counts[name] ?? 0;
+  counts[name] = count + 1;
+  const filename = `${name}${count ? ` (${count})` : ""}.md`;
+  const url = conversation.conversation_id ? `https://chatgpt.com/c/${conversation.conversation_id}` : "";
+  const timestamp = conversation.update_time ?? conversation.create_time;
+  const iso = isoDate(timestamp);
+  const date = dateFormat && iso ? dateFormat(new Date(iso)) : iso;
+  const turns = conversationTurns(conversation, assetFiles).map(({ role, body, timestamp }) =>
+    `# ${role === "user" ? "User" : "ChatGPT"}\n\n${timestamp ? `_${timestamp}_\n\n` : ""}${body}`
+  );
+  const markdown = frontmatter(title, date, url) + (turns.length ? `${turns.join("\n\n")}\n` : "");
+  const file = path.join(sourceDir, filename);
+  await fs.writeFile(file, markdown, "utf8");
+  if (timestamp && conversation.create_time) await fs.utimes(file, timestamp, conversation.create_time);
 }
 
-/**
- * Writes one conversation to Markdown in `sourceDir`.
- * Maintains stable filenames using `counts` across calls.
- */
-export async function processConversation(
-  conversation,
-  sourceDir,
-  { dateFormat = formatDate, counts = {}, assetFiles } = {},
-) {
-  const conversationTitle = conversation.title || conversation.conversation_id || "Untitled conversation";
-  const sanitizedTitle = sanitizeFileName(conversationTitle) || conversation.conversation_id;
-  const count = counts[sanitizedTitle] || 0;
-  counts[sanitizedTitle] = count + 1;
-  const fileName = `${sanitizedTitle}${count ? ` (${count})` : ""}.md`;
-  const filePath = path.join(sourceDir, fileName);
-  const title = `# ${wrapHtmlTagsInBackticks(conversationTitle)}\n`;
-  const lines = [
-    `- Created: ${dateFormat(new Date(conversation.create_time * 1000))}\n`,
-    `- Updated: ${dateFormat(new Date(conversation.update_time * 1000))}\n`,
-    `- Link: https://chatgpt.com/c/${conversation.conversation_id}\n`,
-  ];
-  if (conversation.gizmo_id) lines.push(`- Project: https://chatgpt.com/g/${conversation.gizmo_id}/project\n`);
-  if (conversation.default_model_slug) lines.push(`- Model: ${conversation.default_model_slug}\n`);
-  const flags = [
-    ["Starred", conversation.is_starred],
-    ["Archived", conversation.is_archived],
-    ["Study mode", conversation.is_study_mode],
-    ["Do not remember", conversation.is_do_not_remember],
-  ]
-    .filter(([, enabled]) => enabled)
-    .map(([label]) => label);
-  if (flags.length) lines.push(`- Flags: ${flags.join(", ")}\n`);
-  const metadata = lines.join("");
-  let previousAuthor;
-  const messages = currentBranch(conversation)
-    .map((node) => {
-      const author = `${node.message?.author?.role}:${node.message?.author?.name ?? ""}`;
-      const markdown = nodeToMarkdown(node, { assetFiles, showHeader: author !== previousAuthor });
-      if (markdown) previousAuthor = author;
-      return markdown;
-    })
-    .join("");
-  const markdownContent = `${title}\n${metadata}\n${messages}`;
-  await fs.writeFile(filePath, markdownContent, "utf8");
-  await fs.utimes(filePath, conversation.update_time, conversation.create_time);
-}
-
-// Export the convertToMarkdown function as the default export
 export default chatgptToMarkdown;

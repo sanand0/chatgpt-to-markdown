@@ -23,35 +23,40 @@ file. Directory input reads the archive manifest and converts every conversation
 This generates one Markdown file for each chat in the archive directory. The file name is the chat title, with invalid filename characters replaced by spaces.
 Duplicate titles get `(1)`, `(2)` suffixes to keep names unique.
 
-The Markdown follows the active conversation branch, links exported attachments, converts ChatGPT citation markers into
-normal Markdown links, collapses reasoning blocks, and includes useful metadata such as the model and starred/archive flags.
+The output format matches [`chatgptscraper.js`](https://github.com/sanand0/tools/tree/main/aiscrapers):
+YAML frontmatter (`title`, `date`, `source`), `# User` / `# ChatGPT` headings,
+plain Markdown message bodies (no blockquotes for user messages), and optional `_ISO timestamp_` per turn.
+The transcript follows the active conversation branch. Exported image/file assets become archive links
+when available, citation markers become source links, and available reasoning/tool activity becomes
+collapsible `<details>` blocks within assistant turns. Internal system messages are omitted.
 
-For example, the Markdown output for a chat with the title `Medium-Style Table CSS` might look like this:
+The export's **last updated** timestamp is used for `date`; the bookmarklet instead records the time
+it was copied. Export timestamps use UTC (`Z`) rather than the browser's local timezone offset.
+Metadata that is not visible in the bookmarklet, such as model flags, is not added to the transcript.
+The actual content may differ when UI-only links or artifact previews are absent from the export.
+
+For example:
 
 ````markdown
-# Medium-Style Table CSS
+---
+title: "Medium-Style Table CSS"
+date: 2026-06-11T12:00:00.000Z
+source: "https://chatgpt.com/c/example"
+---
 
-- Created: 26/9/2023, 10:10:54 am
-- Updated: 26/9/2023, 10:11:19 am
-- Link: https://chatgpt.com/c/example
-- Model: gpt-5
+# User
 
-## User
+Generate CSS for a Medium-style table.
 
-> Generate CSS for a Medium-style table
+# ChatGPT
 
-## Assistant
-
-Creating a Medium-style table requires a clean and minimalist design. Here's a simple CSS snippet to help you create a table that resembles the style seen on Medium. This code assumes that you have a basic HTML table structure in place.
+Here's a minimalist table style:
 
 ```css
-/* Resetting some table styles */
 table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-bottom: 20px;
+  border-collapse: collapse;
+  width: 100%;
 }
-...
 ```
 ````
 
@@ -63,7 +68,10 @@ Go to [claude.ai](https://claude.ai/) > Settings > Privacy > Export data and exp
 npx -p chatgpt-to-markdown claude-to-markdown path/to/your/conversations.json
 ```
 
-This writes a Markdown file per conversation (using the conversation name), including summaries, attachments (extracted content), files, thinking blocks, tool calls and tool results.
+This writes a Markdown file per conversation using the format of `claudescraper.js`: YAML frontmatter,
+`## User` / `## Claude` sections, and `---` after every turn. Reasoning and paired tool requests/results
+appear in collapsible details. Exported attachments, files, and voice notes are retained where available.
+Export-only conversation summaries and account IDs are excluded to match the bookmarklet.
 
 ### Thinking Time Analysis
 
@@ -104,7 +112,8 @@ const json = [
 
 const sourceDir = "./output";
 const options = {
-  dateFormat: (d) => d.toLocaleString(),
+  // Optional: override the default ISO 8601 UTC frontmatter date
+  dateFormat: (d) => d.toISOString(),
   // Optional map from ChatGPT asset IDs to archive-relative file paths
   assetFiles: { "file-abc": "file-abc.dat" },
 };
@@ -113,7 +122,7 @@ chatgptToMarkdown(json, sourceDir, options);
 
 ### Options
 
-- `dateFormat`: A function that takes a `Date` object and returns a string. Defaults to a string format like "1 Jan 2023 11:30 PM".
+- `dateFormat`: Optional function converting the export's updated `Date` into a frontmatter date string. Defaults to ISO 8601 UTC (e.g., `2026-06-11T12:00:00.000Z`).
 - `assetFiles`: An optional object mapping ChatGPT asset IDs to archive-relative file paths.
 
 ## Development
@@ -125,6 +134,8 @@ cd chatgpt-to-markdown
 npm install
 npm run lint
 npm test
+# Optional, uses local private exports; reads them without modifying them
+node scripts/real-export-smoke.mjs ~/Documents/chatgpt ~/Documents/claude/conversations.json
 
 npm publish
 git commit . -m"$COMMIT_MSG"; git tag $VERSION; git push --follow-tags
@@ -132,6 +143,9 @@ git commit . -m"$COMMIT_MSG"; git tag $VERSION; git push --follow-tags
 
 ## Release notes
 
+- 1.14.0 (26 Oct 2026): Align both archive exporters with the ChatGPT/Claude bookmarklets' YAML
+  frontmatter, speaker headings, message separators, and collapsible reasoning/tool blocks;
+  test against varied synthetic cases and real export shards. This intentionally changes the default Markdown layout.
 - [1.13.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.13.0): 11 Jun 2026. Read sharded ChatGPT archive directories; follow active branches; link attachments and citations; improve Markdown formatting
 - [1.12.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.12.0): 22 Jan 2026. Claude Markdown metadata shows created, updated, and link - same as ChatGPT
 - [1.11.0](https://npmjs.com/package/chatgpt-to-markdown/v/1.11.0): 28 Nov 2025. Add Claude converter + CLI, richer tool formatting (artifacts, web_search, bash_tool, create_file, str_replace, web_fetch, view, repl)

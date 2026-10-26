@@ -3,7 +3,7 @@
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import { default as chatgptToMarkdown, formatDate } from "./chatgpt-to-markdown";
+import chatgptToMarkdown from "./chatgpt-to-markdown";
 
 describe("chatgptToMarkdown", () => {
   let tempDir;
@@ -39,16 +39,15 @@ describe("chatgptToMarkdown", () => {
     const filePath = path.join(tempDir, "Test Conversation.md");
     const fileContent = await fs.readFile(filePath, "utf8");
 
-    expect(fileContent).toBe(`# Test Conversation
+    expect(fileContent).toBe(`---
+title: "Test Conversation"
+date: 2021-09-01T01:00:00.000Z
+source: "https://chatgpt.com/c/abc123"
+---
 
-- Created: ${formatDate(1630454400 * 1000)}
-- Updated: ${formatDate(1630458000 * 1000)}
-- Link: https://chatgpt.com/c/abc123
+# User
 
-## User (John)
-
-> Hello
-
+Hello
 `);
   });
 
@@ -63,7 +62,7 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "h1 Test Conversation h1.md"), "utf8");
-    expect(fileContent).toContain("# `<h1>`Test Conversation`</h1>`\n");
+    expect(fileContent).toContain('title: "<h1>Test Conversation</h1>"');
   });
 
   it("should sanitize titles with invalid filename characters", async () => {
@@ -92,7 +91,7 @@ describe("chatgptToMarkdown", () => {
     const customDateFormat = (date) => date.toISOString();
     await chatgptToMarkdown(json, tempDir, { dateFormat: customDateFormat });
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain("- Created: 2021-09-01T00:00:00.000Z\n");
+    expect(fileContent).toContain("date: 2021-09-01T01:00:00.000Z\n");
   });
 
   it("should ignore messages with no content", async () => {
@@ -170,7 +169,7 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain("    > T (x.com)\n    >\n    > X");
+    expect(fileContent).toContain("> T (x.com)\n> \n> X");
   });
 
   it("should handle multimodal_text content", async () => {
@@ -217,7 +216,7 @@ describe("chatgptToMarkdown", () => {
           0: {
             message: {
               author: { role: "tool" },
-              content: { content_type: "code", language: "javascript", text: "console.log(\"Hello, world!\");" },
+              content: { content_type: "code", language: "javascript", text: 'console.log("Hello, world!");' },
             },
           },
         },
@@ -225,7 +224,7 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain("```javascript\nconsole.log(\"Hello, world!\");\n```\n");
+    expect(fileContent).toContain('```javascript\nconsole.log("Hello, world!");\n```\n');
   });
 
   it("should skip user_editable_context content", async () => {
@@ -254,7 +253,7 @@ describe("chatgptToMarkdown", () => {
     expect(fileContent).not.toContain("test instructions");
   });
 
-  it("should handle system_error content", async () => {
+  it("should exclude internal system_error messages like the bookmarklet", async () => {
     const json = [
       {
         title: "Test Conversation",
@@ -277,7 +276,7 @@ describe("chatgptToMarkdown", () => {
 
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain("Error Name\n\nError details\n\n");
+    expect(fileContent).not.toContain("Error Name");
   });
 
   it("should handle execution_output content", async () => {
@@ -468,7 +467,7 @@ describe("chatgptToMarkdown", () => {
     expect(fileContent).toContain("Body");
   });
 
-  it("should include gizmo project link", async () => {
+  it("should not include metadata invisible to the bookmarklet", async () => {
     const json = [
       {
         title: "Test Conversation",
@@ -481,7 +480,7 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Test Conversation.md"), "utf8");
-    expect(fileContent).toContain("- Project: https://chatgpt.com/g/g123/project");
+    expect(fileContent).not.toContain("- Project:");
   });
 
   it("should render only the current conversation branch", async () => {
@@ -517,7 +516,7 @@ describe("chatgptToMarkdown", () => {
     expect(fileContent).not.toContain("Old answer");
   });
 
-  it("should group adjacent messages from the same author", async () => {
+  it("should retain separate assistant replies like the bookmarklet", async () => {
     const json = [
       {
         title: "Grouped",
@@ -532,10 +531,10 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir);
     const fileContent = await fs.readFile(path.join(tempDir, "Grouped.md"), "utf8");
-    expect(fileContent.match(/## Assistant/g)).toHaveLength(1);
+    expect(fileContent.match(/^# ChatGPT$/gm)).toHaveLength(2);
   });
 
-  it("should render citations, attachments, model, and flags", async () => {
+  it("should render citations and attachments but omit bookmarklet-invisible model and flags", async () => {
     const json = [
       {
         title: "Rich export",
@@ -571,8 +570,8 @@ describe("chatgptToMarkdown", () => {
     ];
     await chatgptToMarkdown(json, tempDir, { assetFiles: { "file-1": "file-1.dat" } });
     const fileContent = await fs.readFile(path.join(tempDir, "Rich export.md"), "utf8");
-    expect(fileContent).toContain("- Model: gpt-test");
-    expect(fileContent).toContain("- Flags: Starred, Study mode");
+    expect(fileContent).not.toContain("- Model: gpt-test");
+    expect(fileContent).not.toContain("- Flags:");
     expect(fileContent).toContain("[Example](https://example.com/a)");
     expect(fileContent).toContain("[report.pdf](file-1.dat) (application/pdf)");
   });

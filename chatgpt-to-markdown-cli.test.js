@@ -40,6 +40,9 @@ describe("chatgpt-to-markdown CLI", () => {
 
     expect(stdout).toContain("Converted 2 conversations from 2 file(s).");
     await expect(fs.access(path.join(tempDir, "One.md"))).resolves.not.toThrow();
+    const markdown = await fs.readFile(path.join(tempDir, "One.md"), "utf8");
+    expect(markdown).toContain("date: 1970-01-01T00:00:01.000Z");
+    expect(markdown).toContain('source: "https://chatgpt.com/c/1"');
     await expect(fs.access(path.join(tempDir, "Two.md"))).resolves.not.toThrow();
   });
 

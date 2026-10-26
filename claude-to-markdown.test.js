@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import claudeToMarkdown, { formatDate } from "./claude-to-markdown.js";
+import claudeToMarkdown from "./claude-to-markdown.js";
 
 describe("claudeToMarkdown", () => {
   let tempDir;
@@ -43,13 +43,13 @@ describe("claudeToMarkdown", () => {
     await claudeToMarkdown(json, tempDir);
     const content = await fs.readFile(path.join(tempDir, "Alpha Chat.md"), "utf8");
 
-    expect(content).toContain("# Alpha Chat");
-    expect(content).toContain("- Created: " + formatDate(new Date("2025-01-01T00:00:00Z")));
-    expect(content).toContain("- Updated: " + formatDate(new Date("2025-01-02T00:00:00Z")));
-    expect(content).toContain("- Link: https://claude.ai/chat/conv-1");
-    expect(content).toContain("- Account: acct-1");
-    expect(content).toContain("## Summary");
-    expect(content).toContain("Short summary");
+    expect(content).toContain('title: "Alpha Chat"');
+    expect(content).toContain("date: 2025-01-02T00:00:00.000Z");
+    expect(content).toContain('source: "https://claude.ai/chat/conv-1"');
+    expect(content).toContain("## User");
+    expect(content).not.toContain("acct-1");
+    expect(content).not.toContain("## Summary");
+    expect(content).not.toContain("Short summary");
     expect(content).toContain("doc.txt (text/plain) 10 bytes");
     expect(content).toContain("file body");
     expect(content).toContain("Files: image.png");
@@ -94,11 +94,11 @@ describe("claudeToMarkdown", () => {
     await claudeToMarkdown(json, tempDir);
     const content = await fs.readFile(path.join(tempDir, "Tooling.md"), "utf8");
 
-    expect(content).toContain("```thinking");
+    expect(content).toContain("<details>");
     expect(content).toContain("deep thought");
-    expect(content).toContain("**web_search**");
-    expect(content).toContain("query: hi");
-    expect(content).toContain("**web_search result**");
+    expect(content).toContain("<summary>Called tool: search</summary>");
+    expect(content).toContain('"q": "hi"');
+    expect(content).toContain("Response");
     expect(content).toContain("done");
     expect(content).toContain("[token budget]");
     expect(content).toContain("Voice note: Note");
