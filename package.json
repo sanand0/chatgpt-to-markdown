@@ -30,7 +30,7 @@
     "thinktime": "thinktime-cli.js"
   },
   "scripts": {
-    "lint": "dprint fmt -c https://raw.githubusercontent.com/sanand0/scripts/refs/heads/main/dprint.jsonc && npx -y oxlint --fix",
+    "lint": "npx -y oxlint --fix",
     "test": "npx -y vitest@3 run --globals",
     "prepublishOnly": "npm run lint && npm test"
   },
