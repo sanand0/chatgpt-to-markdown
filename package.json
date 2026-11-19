@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-to-markdown",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "description": "Convert ChatGPT and Claude conversation archives to Markdown",
   "homepage": "https://github.com/sanand0/chatgpt-to-markdown",
   "repository": { "type": "git", "url": "git+https://github.com/sanand0/chatgpt-to-markdown.git" },

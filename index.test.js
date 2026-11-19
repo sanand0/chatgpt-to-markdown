@@ -3,7 +3,7 @@
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import chatgptToMarkdown from "./chatgpt-to-markdown";
+import chatgptToMarkdown, { renderSnapshot } from "./chatgpt-to-markdown";
 
 describe("chatgptToMarkdown", () => {
   let tempDir;
@@ -598,4 +598,24 @@ Hello
     expect(fileContent).toContain("Claim.");
     expect(fileContent).not.toContain("cite");
   });
+});
+
+test("renderSnapshot uses branch order and shows the visible answer, citations and generated image", () => {
+  const messages = [
+    { id: "u", author: { role: "user" }, content: { content_type: "text", parts: ["question"] },
+      metadata: { attachments: [{ id: "file", name: "notes.txt" }] }, create_time: 2 },
+    { id: "private", author: { role: "tool" }, content: { content_type: "text", parts: ["private payload"] } },
+    { id: "image", author: { role: "tool" }, channel: "final", content: { content_type: "multimodal_text",
+      parts: [{ content_type: "image_asset_pointer", asset_pointer: "file-service://asset", width: 10, height: 10 }] } },
+    { id: "final", author: { role: "assistant" }, channel: "final", content: { content_type: "text", parts: ["answer citea"] },
+      metadata: { content_references: [{ items: [{ url: "https://example.com/", title: "reference" }] }] }, create_time: 1 },
+  ];
+  const snapshot = { conversation_id: "example", title: "Raw", update_time: 5,
+    messages, current_node: "final", page_info: { has_next_page: false, has_previous_page: false } };
+  const markdown = renderSnapshot(snapshot);
+  expect(markdown).toMatch(/question[\s\S]*notes\.txt[\s\S]*Image \(10x10\)[\s\S]*answer \[reference\]/);
+  expect(markdown).not.toContain("private payload");
+  expect(() => renderSnapshot({ ...snapshot, page_info: { has_previous_page: true } })).toThrow("complete branch");
+  expect(() => renderSnapshot({ ...snapshot, current_node: "u" })).toThrow("complete branch");
+  expect(() => renderSnapshot({ ...snapshot, messages: [...messages.slice(0, -1), { ...messages.at(-1), status: "in_progress" }] })).toThrow("unfinished");
 });

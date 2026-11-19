@@ -125,6 +125,22 @@ chatgptToMarkdown(json, sourceDir, options);
 - `dateFormat`: Optional function converting the export's updated `Date` into a frontmatter date string. Defaults to ISO 8601 UTC (e.g., `2026-06-11T12:00:00.000Z`).
 - `assetFiles`: An optional object mapping ChatGPT asset IDs to archive-relative file paths.
 
+### Render a native ChatGPT snapshot
+
+`renderSnapshot(snapshot)` returns a Markdown string for a complete native ChatGPT
+`messages[]` branch or a captured conversation tree. It uses the active branch and
+renders the visible prompts and replies, including citations and attachment labels.
+Image entries describe the image represented by the snapshot, with file bytes available
+from the official export when included there.
+
+```js
+import { readFile } from "node:fs/promises";
+import { renderSnapshot } from "chatgpt-to-markdown";
+
+const snapshot = JSON.parse(await readFile("conversation.json", "utf8"));
+console.log(renderSnapshot(snapshot));
+```
+
 ## Development
 
 ```bash
@@ -142,6 +158,11 @@ git commit . -m"$COMMIT_MSG"; git tag $VERSION; git push --follow-tags
 ```
 
 ## Release notes
+
+- 1.15.0 (19 Nov 2026): Add the programmatic `renderSnapshot(snapshot)` export for complete
+  native ChatGPT branches and captured trees. Preserve the visible transcript, citations,
+  timestamps, attachment labels, and generated-image entries. This release also includes the
+  1.14.0 export formatting changes below, which were previously available from the repository.
 
 - 1.14.0 (26 Oct 2026): Align both archive exporters with the ChatGPT/Claude bookmarklets' YAML
   frontmatter, speaker headings, message separators, and collapsible reasoning/tool blocks;

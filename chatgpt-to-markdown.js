@@ -41,7 +41,7 @@ function assetMarkdown(part, attachments, assetFiles) {
   return `${filename ? `[${name}](${encodeURI(filename)})` : "Image"}${dimensions}${prompt ? `: ${prompt}` : ""}`;
 }
 
-function bodyMarkdown(message, assetFiles) {
+function bodyMarkdown(message, assetFiles, live = false) {
   const content = message.content;
   if (!content || content.content_type === "user_editable_context") return "";
   const attachments = message.metadata?.attachments ?? [];
@@ -92,9 +92,11 @@ function bodyMarkdown(message, assetFiles) {
     default:
       body = codeFence(JSON.stringify(content, null, 2), "json");
   }
-  const extra = attachments.filter(({ id }) => !rendered.has(id) && assetFiles?.[id]).map(({ id, name, mime_type }) =>
-    `* Attachment: [${name ?? id}](${encodeURI(assetFiles[id])})${mime_type ? ` (${mime_type})` : ""}`
-  );
+  const extra = attachments.filter(({ id }) => !rendered.has(id) && (live || assetFiles?.[id])).map(({ id, name, mime_type }) => {
+    const label = name ?? id ?? "File";
+    const file = assetFiles?.[id];
+    return `* Attachment: ${file ? `[${label}](${encodeURI(file)})` : label}${mime_type ? ` (${mime_type})` : ""}`;
+  });
   if (extra.length) body = [body, extra.join("\n")].filter(Boolean).join("\n\n");
   return body.trim();
 }
@@ -115,7 +117,7 @@ function currentBranch(conversation) {
   return result;
 }
 
-function conversationTurns(conversation, assetFiles) {
+function conversationTurns(conversation, assetFiles, snapshotMessages) {
   const turns = [];
   const appendToAssistant = (body) => {
     if (!body) return;
@@ -123,14 +125,21 @@ function conversationTurns(conversation, assetFiles) {
     if (last?.role === "assistant") last.body += `\n\n${body}`;
     else turns.push({ role: "assistant", body });
   };
-  for (const node of currentBranch(conversation)) {
-    const message = node?.message;
+  const live = snapshotMessages !== undefined;
+  for (const message of snapshotMessages ?? currentBranch(conversation).map((node) => node?.message)) {
     const role = message?.author?.role;
     if (!["user", "assistant", "tool"].includes(role)) continue;
-    const body = bodyMarkdown(message, assetFiles);
+    const generatedImage = role === "tool" && message.channel === "final" &&
+      message.content?.parts?.some((part) => part?.content_type === "image_asset_pointer");
+    if (live && (message.status === "in_progress" || message.metadata?.is_visually_hidden_from_conversation ||
+      (role === "tool" && !generatedImage) ||
+      (role === "assistant" && ((message.recipient && message.recipient !== "all") ||
+        (message.channel && message.channel !== "final") ||
+        !["text", "multimodal_text", "system_error"].includes(message.content?.content_type))))) continue;
+    const body = bodyMarkdown(message, assetFiles, live);
     if (!body) continue;
     const type = message.content?.content_type;
-    if (role === "tool") {
+    if (role === "tool" && (!live || !generatedImage)) {
       appendToAssistant(details(`Called tool: ${message.author?.name ?? "Tool"}`, body));
       continue;
     }
@@ -138,7 +147,7 @@ function conversationTurns(conversation, assetFiles) {
       appendToAssistant(body);
       continue;
     }
-    turns.push({ role, body, timestamp: isoDate(message.create_time) });
+    turns.push({ role: generatedImage ? "assistant" : role, body, timestamp: isoDate(message.create_time) });
   }
   return turns;
 }
@@ -164,6 +173,45 @@ async function chatgptToMarkdown(json, sourceDir, { assetFiles, dateFormat } = {
   }
 }
 
+function transcriptMarkdown(conversation, title, turns, dateFormat) {
+  const url = conversation.conversation_id ? `https://chatgpt.com/c/${conversation.conversation_id}` : "";
+  const iso = isoDate(conversation.update_time ?? conversation.create_time);
+  const date = dateFormat && iso ? dateFormat(new Date(iso)) : iso;
+  const sections = turns.map(({ role, body, timestamp }) =>
+    `# ${role === "user" ? "User" : "ChatGPT"}\n\n${timestamp ? `_${timestamp}_\n\n` : ""}${body}`
+  );
+  return frontmatter(title, date, url) + (sections.length ? `${sections.join("\n\n")}\n` : "");
+}
+
+/** Render the visible transcript of a complete native branch or a captured tree. */
+export function renderSnapshot(snapshot) {
+  if (!snapshot.current_node) throw new Error("Snapshot is missing its current node");
+  let messages;
+  if (Array.isArray(snapshot.messages)) {
+    if (snapshot.page_info?.has_previous_page !== false || snapshot.page_info?.has_next_page !== false ||
+        snapshot.messages.at(-1)?.id !== snapshot.current_node) throw new Error("Snapshot is not a complete branch");
+    messages = snapshot.messages;
+  } else {
+    messages = [];
+    const seen = new Set();
+    let id = snapshot.current_node;
+    while (id !== null) {
+      const node = snapshot.mapping?.[id];
+      if (!node || seen.has(id)) throw new Error("Snapshot has a broken current branch");
+      seen.add(id);
+      if (node.message) messages.push(node.message);
+      id = node.parent;
+    }
+    messages.reverse();
+  }
+  if (messages.some((message) => !message?.id || !message.content || (message.id === snapshot.current_node && message.status === "in_progress")) ||
+      new Set(messages.map(({ id }) => id)).size !== messages.length) throw new Error("Snapshot contains unfinished or invalid messages");
+  const turns = conversationTurns(snapshot, undefined, messages);
+  if (!turns.length) throw new Error("Snapshot has no visible messages");
+  const conversation_id = snapshot.conversation_id ?? snapshot.id;
+  return transcriptMarkdown({ ...snapshot, conversation_id }, snapshot.title || conversation_id, turns);
+}
+
 /** Write a single conversation; shared counts keep duplicate filenames unique across shards. */
 export async function processConversation(conversation, sourceDir, { assetFiles, dateFormat, counts = {} } = {}) {
   const title = conversation.title || conversation.conversation_id || "Untitled conversation";
@@ -171,14 +219,8 @@ export async function processConversation(conversation, sourceDir, { assetFiles,
   const count = counts[name] ?? 0;
   counts[name] = count + 1;
   const filename = `${name}${count ? ` (${count})` : ""}.md`;
-  const url = conversation.conversation_id ? `https://chatgpt.com/c/${conversation.conversation_id}` : "";
   const timestamp = conversation.update_time ?? conversation.create_time;
-  const iso = isoDate(timestamp);
-  const date = dateFormat && iso ? dateFormat(new Date(iso)) : iso;
-  const turns = conversationTurns(conversation, assetFiles).map(({ role, body, timestamp }) =>
-    `# ${role === "user" ? "User" : "ChatGPT"}\n\n${timestamp ? `_${timestamp}_\n\n` : ""}${body}`
-  );
-  const markdown = frontmatter(title, date, url) + (turns.length ? `${turns.join("\n\n")}\n` : "");
+  const markdown = transcriptMarkdown(conversation, title, conversationTurns(conversation, assetFiles), dateFormat);
   const file = path.join(sourceDir, filename);
   await fs.writeFile(file, markdown, "utf8");
   if (timestamp && conversation.create_time) await fs.utimes(file, timestamp, conversation.create_time);
